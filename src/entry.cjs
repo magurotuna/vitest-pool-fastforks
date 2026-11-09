@@ -46,14 +46,18 @@ require('node:module').registerHooks({
 
 // Run Vitest's own fork entry, as the forks pool does. It talks to the main
 // process with process.send() and process.on('message'), which a fork has and
-// this Environment does not, so connect them to the host.
-process.send = (message, ...args) => {
+// this Environment does not, so connect them to the host. Keep the process
+// object and its methods: tests can replace globalThis.process.
+const processObject = process;
+const emit = process.emit.bind(process);
+const nextTick = process.nextTick;
+processObject.send = (message, ...args) => {
   bridge.post(message);
   const callback = args.find((arg) => typeof arg === 'function');
-  if (callback) process.nextTick(callback, null);
+  if (callback) nextTick(callback, null);
   return true;
 };
-process.connected = true;
+processObject.connected = true;
 
 module.exports = import('./import-flags.mjs')
   .then(({ importFlagModules }) => importFlagModules())
@@ -61,5 +65,5 @@ module.exports = import('./import-flags.mjs')
   .then(() => {
     // Messages arrive as host objects; copy them into this realm, as the IPC
     // channel of a fork does.
-    bridge.ready((message) => process.emit('message', structuredClone(message)));
+    bridge.ready((message) => emit('message', structuredClone(message)));
   });

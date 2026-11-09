@@ -53,9 +53,11 @@ void Create(const FunctionCallbackInfo<Value>& args) {
   node::IsolateData* isolate_data = node::GetEnvironmentIsolateData(host);
   auto flags = static_cast<node::EnvironmentFlags::Flags>(
       args[0].As<v8::Uint32>()->Value());
+  // Thread id 0, as in a fork (worker_threads.threadId). Node.js uses the id
+  // only for the names of diagnostic files and in the inspector.
   node::Environment* env = node::CreateEnvironment(
       isolate_data, Local<Context>(), ToStrings(isolate, args[1]),
-      ToStrings(isolate, args[2]), flags);
+      ToStrings(isolate, args[2]), flags, node::ThreadId{0});
   if (env == nullptr) {
     isolate->ThrowError(
         String::NewFromUtf8Literal(isolate, "CreateEnvironment failed"));
