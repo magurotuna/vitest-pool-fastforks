@@ -16,6 +16,7 @@ const hostScript = fileURLToPath(new URL('./host.cjs', import.meta.url))
 const idleHosts = new WeakMap()
 const allHosts = new Set()
 let nextId = 0
+let warnedBlob = false
 
 process.on('exit', () => {
   for (const host of allHosts) host.child.kill()
@@ -77,9 +78,25 @@ function spawnHost(options, context, key, idle, blob) {
   const host = new Host(child, key, idle)
   // `end: false`: the logger streams are shared by every worker.
   const { outputStream, errorStream } = options.project.vitest.logger
-  for (const [from, to] of [[child.stdout, outputStream], [child.stderr, errorStream]]) {
+  const piped = []
+  const pipe = (from, to) => {
     to.setMaxListeners(to.getMaxListeners() + 1)
     from.pipe(to, { end: false })
+    piped.push([from, to])
+  }
+  pipe(child.stdout, outputStream)
+  // Keep stderr until the child process is ready: if the blob makes it fail,
+  // startHost() prints a warning instead of the crash report.
+  const startupOutput = []
+  const keep = (chunk) => startupOutput.push(chunk)
+  child.stderr.on('data', keep)
+  host.ready = host.waitFor('ready').then(() => {
+    child.stderr.off('data', keep)
+    for (const chunk of startupOutput) errorStream.write(chunk)
+    pipe(child.stderr, errorStream)
+  })
+  host.printStartupOutput = () => {
+    for (const chunk of startupOutput) errorStream.write(chunk)
   }
   child.on('message', (m) => {
     if (m?.__fastforks !== undefined) host.events.emit(`message:${m.__fastforks}`, m.msg)
@@ -92,7 +109,7 @@ function spawnHost(options, context, key, idle, blob) {
     allHosts.delete(host)
     const index = host.idle.indexOf(host)
     if (index !== -1) host.idle.splice(index, 1)
-    for (const [from, to] of [[child.stdout, outputStream], [child.stderr, errorStream]]) {
+    for (const [from, to] of piped) {
       from.unpipe(to)
       to.setMaxListeners(to.getMaxListeners() - 1)
     }
@@ -116,17 +133,31 @@ async function startHost(options, context, key, idle) {
       : undefined
   const host = spawnHost(options, context, key, idle, blob)
   try {
-    await host.waitFor('ready')
+    await host.ready
+    return host
   } catch (error) {
-    // A blob from another build of the same Node.js version can make the
-    // child process fail before it is ready. Start again without the blob.
-    if (!blob) throw error
-    discardSnapshotBlob(blob)
-    const retry = spawnHost(options, context, key, idle, undefined)
-    await retry.waitFor('ready')
-    return retry
+    if (!blob) {
+      host.printStartupOutput()
+      throw error
+    }
   }
-  return host
+  // A blob from another build of the same Node.js version can make the
+  // child process fail before it is ready. Start again without the blob.
+  discardSnapshotBlob(blob)
+  if (!warnedBlob) {
+    warnedBlob = true
+    options.project.vitest.logger.warn(
+      `[vitest-pool-fastforks] A child process exited ${host.exitReason} with the cached startup snapshot ${blob}. Starting without it.`,
+    )
+  }
+  const retry = spawnHost(options, context, key, idle, undefined)
+  try {
+    await retry.ready
+    return retry
+  } catch (error) {
+    retry.printStartupOutput()
+    throw error
+  }
 }
 
 async function acquireHost(options, context) {
