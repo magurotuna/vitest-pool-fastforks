@@ -113,6 +113,7 @@ function spawnHost(options, context, key, registry, blob) {
     registry.hosts.delete(host)
     const index = registry.idle.indexOf(host)
     if (index !== -1) registry.idle.splice(index, 1)
+    notifyWaiters(registry)
     for (const [from, to] of piped) {
       from.unpipe(to)
       to.setMaxListeners(to.getMaxListeners() - 1)
@@ -174,18 +175,21 @@ async function startHost(options, context, key, registry) {
   }
 }
 
-// At most one child process more than the number of workers (Vitest starts
-// the next test file before it stops the previous one), and each child
-// process within its share of half of the memory, by default.
+// At most two child processes per worker: Vitest starts the next test file
+// before the previous one is stopped, and freeing an Environment takes time.
+// Each child process stays within its share of half of the memory, by
+// default.
 function getRegistry(options, context) {
   const vitest = options.project.vitest
   let registry = registries.get(vitest)
   if (!registry) {
-    const limit = (vitest.config.maxWorkers || availableParallelism()) + 1
+    const limit = 2 * (vitest.config.maxWorkers || availableParallelism())
     registry = {
       hosts: new Set(),
       // Idle child processes, least recently used first.
       idle: [],
+      // Calls waiting for a child process to become idle or to exit.
+      waiters: [],
       limit,
       memoryLimit: context.memoryLimit ?? totalmem() / 2 / limit,
     }
@@ -197,18 +201,37 @@ function getRegistry(options, context) {
 async function acquireHost(options, context, { reuse = true } = {}) {
   const registry = getRegistry(options, context)
   const key = JSON.stringify([options.execArgv, options.env, needsInspector(options)])
-  if (reuse) {
-    const index = registry.idle.findLastIndex((host) => host.key === key)
-    if (index !== -1) return registry.idle.splice(index, 1)[0]
-  }
-  // Make room: stop the child processes that waited longest, whatever their
-  // key. A project with many test projects would keep one set per key.
-  while (registry.hosts.size >= registry.limit && registry.idle.length > 0) {
-    const oldest = registry.idle.shift()
-    registry.hosts.delete(oldest)
-    oldest.child.kill()
+  for (let waited = false; ; waited = true) {
+    if (reuse) {
+      const index = registry.idle.findLastIndex((host) => host.key === key)
+      if (index !== -1) return registry.idle.splice(index, 1)[0]
+    }
+    if (registry.hosts.size < registry.limit) break
+    if (registry.idle.length > 0) {
+      // Make room: stop the child process that waited longest, whatever its
+      // key.
+      const oldest = registry.idle.shift()
+      registry.hosts.delete(oldest)
+      oldest.child.kill()
+      break
+    }
+    if (waited) break
+    // Every child process is busy, most of them freeing the Environment of
+    // a finished file. Waiting for one is faster than starting a new one,
+    // but do not wait long: a busy one may be running a long test file.
+    await new Promise((resolve) => {
+      const timer = setTimeout(resolve, 1000)
+      registry.waiters.push(() => {
+        clearTimeout(timer)
+        resolve()
+      })
+    })
   }
   return startHost(options, context, key, registry)
+}
+
+function notifyWaiters(registry) {
+  for (const waiter of registry.waiters.splice(0)) waiter()
 }
 
 function releaseHost(host, rss) {
@@ -219,11 +242,12 @@ function releaseHost(host, rss) {
   if (rss > registry.memoryLimit || registry.hosts.size > registry.limit) {
     registry.hosts.delete(host)
     host.child.kill()
-    return
+  } else {
+    // Let the main process exit while the child process is idle.
+    setRef(host.child, false)
+    registry.idle.push(host)
   }
-  // Let the main process exit while the child process is idle.
-  setRef(host.child, false)
-  registry.idle.push(host)
+  notifyWaiters(registry)
 }
 
 export class FastForksPoolWorker {
