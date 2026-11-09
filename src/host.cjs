@@ -24,8 +24,18 @@ if (options.inspector) {
 const argv = [process.argv[0], options.argv1];
 const execArgv = withoutSnapshotBlob(process.execArgv);
 
-// Shared by all Environments in this process. See entry.cjs.
-const moduleCache = { resolve: new Map(), load: new Map() };
+// Shared by all Environments in this process. See entry.cjs. The entries are
+// made here, not in an Environment: an object keeps the context that made it
+// alive, so an entry made in an Environment would keep that whole
+// Environment in memory after it is freed.
+const resolved = new Map();
+const loaded = new Map();
+const moduleCache = {
+  getResolved: (key) => resolved.get(key),
+  setResolved: (key, url, format) => resolved.set(key, { url, format }),
+  getLoaded: (url) => loaded.get(url),
+  setLoaded: (url, format, source) => loaded.set(url, { format, source }),
+};
 
 const entry = require('node:path').join(__dirname, 'entry.cjs');
 // The embedder main script can import only built-in modules, so it loads
@@ -76,6 +86,13 @@ function restoreProcessState() {
   if (process.umask() !== baseline.umask) process.umask(baseline.umask);
 }
 
+const contextsLog = process.env.VITEST_POOL_FASTFORKS_CONTEXTS;
+let gc;
+if (contextsLog) {
+  require('node:v8').setFlagsFromString('--expose-gc');
+  gc = require('node:vm').runInNewContext('gc');
+}
+
 function free(id) {
   const s = environments.get(id);
   environments.delete(id);
@@ -83,7 +100,13 @@ function free(id) {
     addon.free(s.sid);
     restoreProcessState();
   }
-  process.send({ __fastforks_ctl: 'freed', id });
+  if (contextsLog) {
+    // Measurement only: how many contexts stay alive after a full GC.
+    gc();
+    const h = require('node:v8').getHeapStatistics();
+    require('node:fs').appendFileSync(contextsLog, JSON.stringify({ pid: process.pid, id, native: h.number_of_native_contexts, detached: h.number_of_detached_contexts, used: h.used_heap_size, rss: process.memoryUsage.rss() }) + '\n');
+  }
+  process.send({ __fastforks_ctl: 'freed', id, rss: process.memoryUsage.rss() });
 }
 
 function withoutSnapshotBlob(args) {

@@ -4,16 +4,17 @@
 // test file at a time.
 import { fork } from 'node:child_process'
 import { EventEmitter } from 'node:events'
+import { availableParallelism, totalmem } from 'node:os'
 import { resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { canUseSnapshotBlob, discardSnapshotBlob, getSnapshotBlob } from './snapshot.mjs'
 
 const hostScript = fileURLToPath(new URL('./host.cjs', import.meta.url))
 
-// Idle child processes per Vitest instance, by execArgv and env: a child
-// process keeps the execArgv, the env, and the output streams that it
-// started with.
-const idleHosts = new WeakMap()
+// The child processes of each Vitest instance. A child process keeps the
+// execArgv, the env, and the output streams that it started with, so an idle
+// child process runs only test files with the same key.
+const registries = new WeakMap()
 const allHosts = new Set()
 let nextId = 0
 let warnedBlob = false
@@ -23,10 +24,11 @@ process.on('exit', () => {
 })
 
 class Host {
-  constructor(child, key, idle) {
+  constructor(child, key, registry) {
     this.child = child
     this.key = key
-    this.idle = idle
+    this.registry = registry
+    this.files = 0
     this.events = new EventEmitter()
     this.events.setMaxListeners(0)
     this.exited = false
@@ -46,9 +48,9 @@ class Host {
         reject(new Error(`The child process exited ${this.exitReason}`))
         return
       }
-      const onReply = () => {
+      const onReply = (message) => {
         this.events.off('exit', onExit)
-        resolve()
+        resolve(message)
       }
       const onExit = () => {
         this.events.off(`${reply}:${id}`, onReply)
@@ -60,7 +62,7 @@ class Host {
   }
 }
 
-function spawnHost(options, context, key, idle, blob) {
+function spawnHost(options, context, key, registry, blob) {
   const child = fork(hostScript, [], {
     execArgv: [...(blob ? ['--snapshot-blob', blob] : []), ...options.execArgv],
     env: {
@@ -76,7 +78,7 @@ function spawnHost(options, context, key, idle, blob) {
     stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
     serialization: 'advanced',
   })
-  const host = new Host(child, key, idle)
+  const host = new Host(child, key, registry)
   // `end: false`: the logger streams are shared by every worker.
   const { outputStream, errorStream } = options.project.vitest.logger
   const piped = []
@@ -101,15 +103,16 @@ function spawnHost(options, context, key, idle, blob) {
   }
   child.on('message', (m) => {
     if (m?.__fastforks !== undefined) host.events.emit(`message:${m.__fastforks}`, m.msg)
-    else if (m?.__fastforks_ctl) host.events.emit(`${m.__fastforks_ctl}:${m.id}`)
+    else if (m?.__fastforks_ctl) host.events.emit(`${m.__fastforks_ctl}:${m.id}`, m)
   })
   child.on('error', (error) => host.events.emit('error', error))
   child.on('exit', (code, signal) => {
     host.exited = true
     host.exitReason = signal ? `with signal ${signal}` : `with exit code ${code}`
     allHosts.delete(host)
-    const index = host.idle.indexOf(host)
-    if (index !== -1) host.idle.splice(index, 1)
+    registry.hosts.delete(host)
+    const index = registry.idle.indexOf(host)
+    if (index !== -1) registry.idle.splice(index, 1)
     for (const [from, to] of piped) {
       from.unpipe(to)
       to.setMaxListeners(to.getMaxListeners() - 1)
@@ -117,6 +120,7 @@ function spawnHost(options, context, key, idle, blob) {
     host.events.emit('exit', code, signal)
   })
   allHosts.add(host)
+  registry.hosts.add(host)
   return host
 }
 
@@ -136,12 +140,12 @@ function setRef(child, ref) {
   }
 }
 
-async function startHost(options, context, key, idle) {
+async function startHost(options, context, key, registry) {
   const blob =
     context.snapshot && canUseSnapshotBlob(options.execArgv, options.env.NODE_OPTIONS)
       ? await getSnapshotBlob()
       : undefined
-  const host = spawnHost(options, context, key, idle, blob)
+  const host = spawnHost(options, context, key, registry, blob)
   try {
     await host.ready
     return host
@@ -160,7 +164,7 @@ async function startHost(options, context, key, idle) {
       `[vitest-pool-fastforks] A child process exited ${host.exitReason} with the cached startup snapshot ${blob}. Starting without it.`,
     )
   }
-  const retry = spawnHost(options, context, key, idle, undefined)
+  const retry = spawnHost(options, context, key, registry, undefined)
   try {
     await retry.ready
     return retry
@@ -170,14 +174,56 @@ async function startHost(options, context, key, idle) {
   }
 }
 
-async function acquireHost(options, context) {
+// At most one child process more than the number of workers (Vitest starts
+// the next test file before it stops the previous one), and each child
+// process within its share of half of the memory, by default.
+function getRegistry(options, context) {
   const vitest = options.project.vitest
-  if (!idleHosts.has(vitest)) idleHosts.set(vitest, new Map())
+  let registry = registries.get(vitest)
+  if (!registry) {
+    const limit = (vitest.config.maxWorkers || availableParallelism()) + 1
+    registry = {
+      hosts: new Set(),
+      // Idle child processes, least recently used first.
+      idle: [],
+      limit,
+      memoryLimit: context.memoryLimit ?? totalmem() / 2 / limit,
+    }
+    registries.set(vitest, registry)
+  }
+  return registry
+}
+
+async function acquireHost(options, context, { reuse = true } = {}) {
+  const registry = getRegistry(options, context)
   const key = JSON.stringify([options.execArgv, options.env, needsInspector(options)])
-  const byKey = idleHosts.get(vitest)
-  if (!byKey.has(key)) byKey.set(key, [])
-  const idle = byKey.get(key)
-  return idle.pop() ?? (await startHost(options, context, key, idle))
+  if (reuse) {
+    const index = registry.idle.findLastIndex((host) => host.key === key)
+    if (index !== -1) return registry.idle.splice(index, 1)[0]
+  }
+  // Make room: stop the child processes that waited longest, whatever their
+  // key. A project with many test projects would keep one set per key.
+  while (registry.hosts.size >= registry.limit && registry.idle.length > 0) {
+    const oldest = registry.idle.shift()
+    registry.hosts.delete(oldest)
+    oldest.child.kill()
+  }
+  return startHost(options, context, key, registry)
+}
+
+function releaseHost(host, rss) {
+  const { registry } = host
+  // Memory that a test file allocated outside the JavaScript heap, or that
+  // V8 does not give back, stays in the child process. Start a new one when
+  // it gets large, as a fork would.
+  if (rss > registry.memoryLimit || registry.hosts.size > registry.limit) {
+    registry.hosts.delete(host)
+    host.child.kill()
+    return
+  }
+  // Let the main process exit while the child process is idle.
+  setRef(host.child, false)
+  registry.idle.push(host)
 }
 
 export class FastForksPoolWorker {
@@ -194,6 +240,21 @@ export class FastForksPoolWorker {
 
   async start() {
     const host = await acquireHost(this.options, this.context)
+    try {
+      await this.attach(host)
+    } catch (error) {
+      if (host.files === 0) throw error
+      // A child process that crashes before the test file starts was broken
+      // by an earlier file. Start the file in a new child process, so that it
+      // runs as in a fork, and is not missing from the results.
+      this.options.project.vitest.logger.warn(
+        `[vitest-pool-fastforks] A child process exited ${host.exitReason} after ${host.files} test files, before the next file started. Starting the file in a new child process.`,
+      )
+      await this.attach(await acquireHost(this.options, this.context, { reuse: false }))
+    }
+  }
+
+  async attach(host) {
     // While a test file runs, the main process waits for the child process.
     setRef(host.child, true)
     this.host = host
@@ -207,14 +268,14 @@ export class FastForksPoolWorker {
     for (const [key, callback] of this.listeners) host.events.off(key, callback)
     this.listeners = []
     if (host.exited) return
+    let freed
     try {
-      await host.request('free', this.id, 'freed')
+      freed = await host.request('free', this.id, 'freed')
     } catch {
       return
     }
-    // Let the main process exit while the child process is idle.
-    setRef(host.child, false)
-    host.idle.push(host)
+    host.files++
+    releaseHost(host, freed.rss)
   }
 
   send(message) {

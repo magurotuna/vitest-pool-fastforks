@@ -116,6 +116,17 @@ void Global(const FunctionCallbackInfo<Value>& args) {
 void Free(const FunctionCallbackInfo<Value>& args) {
   node::Environment* env = GetEnv(args);
   if (env == nullptr) return;
+  Isolate* isolate = args.GetIsolate();
+  {
+    // Tell V8 that the Environment's context goes away, as a browser does
+    // for a page. V8 then drops the pending FinalizationRegistry callbacks of
+    // the context (they would run later in a freed Environment and abort the
+    // process) and the maps that it keeps alive for the context (without
+    // this, a normal full GC does not collect the freed contexts).
+    v8::HandleScope handle_scope(isolate);
+    Context::Scope context_scope(node::GetMainContext(env));
+    isolate->ContextDisposedNotification(v8::ContextDependants::kSomeDependants);
+  }
   node::FreeEnvironment(env);
   envs[args[0].As<v8::Uint32>()->Value()] = nullptr;
 }

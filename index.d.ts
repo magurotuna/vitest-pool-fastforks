@@ -16,6 +16,14 @@ export interface FastForksOptions {
    * @default true
    */
   snapshot?: boolean
+  /**
+   * A child process runs many test files, one after another. When its
+   * memory (RSS) after a test file is above this limit, the pool stops it and
+   * starts a new one. Bytes, or a percentage of the system memory such as
+   * `'10%'`.
+   * @default half of the system memory divided by the number of workers + 1
+   */
+  memoryLimit?: number | string
 }
 
 export declare function fastForks(options?: FastForksOptions): PoolRunnerInitializer
