@@ -1,0 +1,26 @@
+{
+  "name": "vitest-pool-fastforks",
+  "version": "0.0.0",
+  "description": "A Vitest pool that isolates test files like forks, with a new Node.js environment per file in reused child processes",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./src/index.mjs"
+    }
+  },
+  "files": [
+    "index.d.ts",
+    "src",
+    "addon",
+    "binding.gyp",
+    "prebuilds"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "vitest": ">=4.0.0 <6.0.0"
+  }
+}

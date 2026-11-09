@@ -1,0 +1,198 @@
+// The main-process side. Starts child processes (host.cjs) and reuses them:
+// each test file runs in a new Node.js Environment inside a child process.
+// One FastForksPoolWorker is one test file, and a child process runs one
+// test file at a time.
+import { fork } from 'node:child_process'
+import { EventEmitter } from 'node:events'
+import { resolve } from 'node:path'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { canUseSnapshotBlob, discardSnapshotBlob, getSnapshotBlob } from './snapshot.mjs'
+
+const hostScript = fileURLToPath(new URL('./host.cjs', import.meta.url))
+
+// Idle child processes per Vitest instance, by execArgv and env: a child
+// process keeps the execArgv, the env, and the output streams that it
+// started with.
+const idleHosts = new WeakMap()
+const allHosts = new Set()
+let nextId = 0
+
+process.on('exit', () => {
+  for (const host of allHosts) host.child.kill()
+})
+
+class Host {
+  constructor(child, key, idle) {
+    this.child = child
+    this.key = key
+    this.idle = idle
+    this.events = new EventEmitter()
+    this.events.setMaxListeners(0)
+    this.exited = false
+    this.exitReason = ''
+  }
+
+  // Sends a control message and waits for the reply with the same id.
+  request(type, id, reply) {
+    const replied = this.waitFor(reply, id)
+    if (!this.exited) this.child.send({ __fastforks_ctl: type, id })
+    return replied
+  }
+
+  waitFor(reply, id) {
+    return new Promise((resolve, reject) => {
+      if (this.exited) {
+        reject(new Error(`The child process exited ${this.exitReason}`))
+        return
+      }
+      const onReply = () => {
+        this.events.off('exit', onExit)
+        resolve()
+      }
+      const onExit = () => {
+        this.events.off(`${reply}:${id}`, onReply)
+        reject(new Error(`The child process exited ${this.exitReason}`))
+      }
+      this.events.once(`${reply}:${id}`, onReply)
+      this.events.once('exit', onExit)
+    })
+  }
+}
+
+function spawnHost(options, context, key, idle, blob) {
+  const child = fork(hostScript, [], {
+    execArgv: [...(blob ? ['--snapshot-blob', blob] : []), ...options.execArgv],
+    env: {
+      ...options.env,
+      VITEST_POOL_FASTFORKS_HOST: JSON.stringify({
+        addon: context.addon,
+        workerUrl: pathToFileURL(resolve(options.distPath, 'worker.js')).href,
+        argv1: resolve(options.distPath, 'workers/forks.js'),
+        cpu: process.env.VITEST_POOL_FASTFORKS_CPU,
+      }),
+    },
+    stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
+    serialization: 'advanced',
+  })
+  const host = new Host(child, key, idle)
+  // `end: false`: the logger streams are shared by every worker.
+  const { outputStream, errorStream } = options.project.vitest.logger
+  for (const [from, to] of [[child.stdout, outputStream], [child.stderr, errorStream]]) {
+    to.setMaxListeners(to.getMaxListeners() + 1)
+    from.pipe(to, { end: false })
+  }
+  child.on('message', (m) => {
+    if (m?.__fastforks !== undefined) host.events.emit(`message:${m.__fastforks}`, m.msg)
+    else if (m?.__fastforks_ctl) host.events.emit(`${m.__fastforks_ctl}:${m.id}`)
+  })
+  child.on('error', (error) => host.events.emit('error', error))
+  child.on('exit', (code, signal) => {
+    host.exited = true
+    host.exitReason = signal ? `with signal ${signal}` : `with exit code ${code}`
+    allHosts.delete(host)
+    const index = host.idle.indexOf(host)
+    if (index !== -1) host.idle.splice(index, 1)
+    for (const [from, to] of [[child.stdout, outputStream], [child.stderr, errorStream]]) {
+      from.unpipe(to)
+      to.setMaxListeners(to.getMaxListeners() - 1)
+    }
+    host.events.emit('exit', code, signal)
+  })
+  allHosts.add(host)
+  return host
+}
+
+function setRef(child, ref) {
+  for (const handle of [child, child.channel, child.stdout, child.stderr]) {
+    if (ref) handle?.ref()
+    else handle?.unref()
+  }
+}
+
+async function startHost(options, context, key, idle) {
+  const blob =
+    context.snapshot && canUseSnapshotBlob(options.execArgv, options.env.NODE_OPTIONS)
+      ? await getSnapshotBlob()
+      : undefined
+  const host = spawnHost(options, context, key, idle, blob)
+  try {
+    await host.waitFor('ready')
+  } catch (error) {
+    // A blob from another build of the same Node.js version can make the
+    // child process fail before it is ready. Start again without the blob.
+    if (!blob) throw error
+    discardSnapshotBlob(blob)
+    const retry = spawnHost(options, context, key, idle, undefined)
+    await retry.waitFor('ready')
+    return retry
+  }
+  return host
+}
+
+async function acquireHost(options, context) {
+  const vitest = options.project.vitest
+  if (!idleHosts.has(vitest)) idleHosts.set(vitest, new Map())
+  const key = JSON.stringify([options.execArgv, options.env])
+  const byKey = idleHosts.get(vitest)
+  if (!byKey.has(key)) byKey.set(key, [])
+  const idle = byKey.get(key)
+  return idle.pop() ?? (await startHost(options, context, key, idle))
+}
+
+export class FastForksPoolWorker {
+  name = 'fastforks'
+  cacheFs = true
+
+  constructor(options, context) {
+    this.options = options
+    this.context = context
+    this.id = nextId++
+    this.host = undefined
+    this.listeners = []
+  }
+
+  async start() {
+    const host = await acquireHost(this.options, this.context)
+    // While a test file runs, the main process waits for the child process.
+    setRef(host.child, true)
+    this.host = host
+    await host.request('create', this.id, 'created')
+  }
+
+  async stop() {
+    const host = this.host
+    if (!host) return
+    this.host = undefined
+    for (const [key, callback] of this.listeners) host.events.off(key, callback)
+    this.listeners = []
+    if (host.exited) return
+    try {
+      await host.request('free', this.id, 'freed')
+    } catch {
+      return
+    }
+    // Let the main process exit while the child process is idle.
+    setRef(host.child, false)
+    host.idle.push(host)
+  }
+
+  send(message) {
+    this.host.child.send({ __fastforks: this.id, msg: message })
+  }
+
+  on(event, callback) {
+    const key = event === 'message' ? `message:${this.id}` : event
+    this.host.events.on(key, callback)
+    this.listeners.push([key, callback])
+  }
+
+  off(event, callback) {
+    const key = event === 'message' ? `message:${this.id}` : event
+    this.host?.events.off(key, callback)
+    this.listeners = this.listeners.filter(([k, c]) => k !== key || c !== callback)
+  }
+
+  deserialize(data) {
+    return data
+  }
+}
