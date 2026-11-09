@@ -132,6 +132,9 @@ function coverageCounts(dir) {
 
 function compare(a, b) {
   const diff = []
+  // Some Vitest versions exit without a report (vitest 4.0.15 with the exit
+  // fixture and one worker). That is the same result if both runs do it.
+  if (a.error && b.error) return a.code === b.code ? [] : [`exit code: ${a.code} -> ${b.code}`]
   if (a.error || b.error) return [a.error, b.error].filter(Boolean)
   for (const file of new Set([...Object.keys(a.coverage ?? {}), ...Object.keys(b.coverage ?? {})])) {
     if (a.coverage[file] !== b.coverage[file]) diff.push(`coverage ${file}: ${a.coverage[file]} -> ${b.coverage[file]}`)

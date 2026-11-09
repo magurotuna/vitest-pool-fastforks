@@ -67,7 +67,7 @@ function spawnHost(options, context, key, idle, blob) {
       ...options.env,
       VITEST_POOL_FASTFORKS_HOST: JSON.stringify({
         addon: context.addon,
-        workerUrl: pathToFileURL(resolve(options.distPath, 'worker.js')).href,
+        forksUrl: pathToFileURL(resolve(options.distPath, 'workers/forks.js')).href,
         argv1: resolve(options.distPath, 'workers/forks.js'),
         inspector: needsInspector(options),
         cpu: process.env.VITEST_POOL_FASTFORKS_CPU,

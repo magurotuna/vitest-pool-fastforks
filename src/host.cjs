@@ -2,7 +2,7 @@
 // The child process. Creates one Node.js Environment per test file with the
 // addon and runs vitest's worker (init() from vitest/worker) inside it.
 // Messages from the main process are routed by worker id.
-// { addon, workerUrl, argv1, inspector, cpu }, set by pool.mjs.
+// { addon, forksUrl, argv1, inspector, cpu }, set by pool.mjs.
 const options = JSON.parse(process.env.VITEST_POOL_FASTFORKS_HOST);
 delete process.env.VITEST_POOL_FASTFORKS_HOST;
 const addon = require(options.addon);
@@ -36,22 +36,27 @@ const environments = new Map();
 
 function create(id) {
   const sid = addon.create(FLAGS, argv, execArgv);
-  const s = { sid, listeners: new Set(), queue: [] };
+  const s = { id, sid, deliver: undefined, queue: [] };
   addon.global(sid).__vitestPoolFastForks = {
     post: (v) => process.send({ __fastforks: id, msg: v }),
-    on: (cb) => {
-      s.listeners.add(cb);
-      // Deliver the messages that arrived before init() listened.
-      for (const m of s.queue.splice(0)) cb(m);
+    // Called after Vitest's fork entry listens for messages.
+    ready: (deliver) => {
+      s.deliver = deliver;
+      if (s.queue.length > 0) setImmediate(() => s.queue.splice(0).forEach((msg) => send(s, msg)));
     },
-    off: (cb) => s.listeners.delete(cb),
-    teardown: () => s.listeners.clear(),
-    workerUrl: options.workerUrl,
+    forksUrl: options.forksUrl,
     moduleCache,
   };
   addon.load(sid, LOAD);
   environments.set(id, s);
   process.send({ __fastforks_ctl: 'created', id });
+}
+
+// Run the Environment's listener inside its callback scope, so that the
+// nextTick callbacks that it schedules run now, not at the Environment's next
+// timer or I/O callback.
+function send(s, msg) {
+  if (environments.get(s.id) === s) addon.call(s.sid, s.deliver, msg);
 }
 
 // Environments share the process: cwd, environment variables, and umask that
@@ -79,10 +84,6 @@ function free(id) {
     restoreProcessState();
   }
   process.send({ __fastforks_ctl: 'freed', id });
-}
-
-function deliver({ listeners, msg }) {
-  for (const cb of listeners) cb(msg);
 }
 
 function withoutSnapshotBlob(args) {
@@ -114,11 +115,8 @@ process.on('message', (m) => {
   else if (m.__fastforks !== undefined) {
     const s = environments.get(m.__fastforks);
     if (!s) return;
-    if (s.listeners.size === 0) s.queue.push(m.msg);
-    // Run the listeners inside the Environment's callback scope, so that the
-    // nextTick callbacks they schedule run now, not at the Environment's next
-    // timer or I/O callback.
-    else addon.call(s.sid, deliver, { listeners: [...s.listeners], msg: m.msg });
+    if (s.deliver === undefined || s.queue.length > 0) s.queue.push(m.msg);
+    else send(s, m.msg);
   }
 });
 

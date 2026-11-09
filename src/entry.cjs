@@ -1,6 +1,6 @@
 'use strict';
 // Runs inside each test file's Environment, loaded by the Environment's own
-// CommonJS loader (host.cjs). Loads vitest's worker and connects it to the
+// CommonJS loader (host.cjs). Runs Vitest's fork entry and connects it to the
 // bridge that the host put on the global object.
 const bridge = globalThis.__vitestPoolFastForks;
 delete globalThis.__vitestPoolFastForks;
@@ -44,19 +44,22 @@ require('node:module').registerHooks({
   },
 });
 
+// Run Vitest's own fork entry, as the forks pool does. It talks to the main
+// process with process.send() and process.on('message'), which a fork has and
+// this Environment does not, so connect them to the host.
+process.send = (message, ...args) => {
+  bridge.post(message);
+  const callback = args.find((arg) => typeof arg === 'function');
+  if (callback) process.nextTick(callback, null);
+  return true;
+};
+process.connected = true;
+
 module.exports = import('./import-flags.mjs')
   .then(({ importFlagModules }) => importFlagModules())
-  .then(() => import(bridge.workerUrl))
-  .then(({ init, runBaseTests, setupEnvironment }) => {
-  init({
-    post: (v) => bridge.post(v),
-    on: (cb) => bridge.on(cb),
-    off: (cb) => bridge.off(cb),
-    teardown: () => bridge.teardown(),
-    // Messages arrive as host objects; copy them into this realm.
-    deserialize: (v) => structuredClone(v),
-    runTests: (state, traces) => runBaseTests('run', state, traces),
-    collectTests: (state, traces) => runBaseTests('collect', state, traces),
-    setup: setupEnvironment,
+  .then(() => import(bridge.forksUrl))
+  .then(() => {
+    // Messages arrive as host objects; copy them into this realm, as the IPC
+    // channel of a fork does.
+    bridge.ready((message) => process.emit('message', structuredClone(message)));
   });
-});
