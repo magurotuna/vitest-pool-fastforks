@@ -1,5 +1,19 @@
+import { ForksPoolWorker } from 'vitest/node'
 import { FastForksPoolWorker } from './pool.mjs'
 import { detect } from './support.mjs'
+
+// The Environments of this pool have no debugger connection, so a run with
+// --inspect or --inspect-brk uses a fork for each test file.
+class DebugPoolWorker extends ForksPoolWorker {
+  name = 'fastforks'
+}
+
+function usesDebugger(poolOptions) {
+  return (
+    poolOptions.project.config.inspector?.enabled ||
+    poolOptions.execArgv.some((arg) => /^--inspect(-brk|-wait)?(=|$)/.test(arg))
+  )
+}
 
 let warned = false
 
@@ -21,6 +35,7 @@ export function fastForks(options = {}) {
   const context = { addon: support.addon, snapshot: options.snapshot ?? true }
   return {
     name: 'fastforks',
-    createPoolWorker: (poolOptions) => new FastForksPoolWorker(poolOptions, context),
+    createPoolWorker: (poolOptions) =>
+      usesDebugger(poolOptions) ? new DebugPoolWorker(poolOptions) : new FastForksPoolWorker(poolOptions, context),
   }
 }

@@ -23,6 +23,7 @@ const FIXTURES = {
   stdio: ['stdio', []],
   handles: ['handles', []],
   changing: ['changing', ['--maxWorkers=1']],
+  inspect: ['inspect', ['--inspect=127.0.0.1:9339', '--no-file-parallelism']],
   'coverage-v8': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=v8']],
   'coverage-istanbul': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=istanbul']],
 }
