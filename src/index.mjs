@@ -1,11 +1,18 @@
-import { ForksPoolWorker } from 'vitest/node'
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
 import { FastForksPoolWorker } from './pool.mjs'
 import { detect } from './support.mjs'
 
+const require = createRequire(import.meta.url)
+
 // The Environments of this pool have no debugger connection, so a run with
-// --inspect or --inspect-brk uses a fork for each test file.
-class DebugPoolWorker extends ForksPoolWorker {
-  name = 'fastforks'
+// --inspect or --inspect-brk uses a fork for each test file. Take the forks
+// worker from the Vitest that runs, which has already loaded it.
+function createDebugPoolWorker(poolOptions) {
+  const { ForksPoolWorker } = require(join(poolOptions.distPath, 'node.js'))
+  const worker = new ForksPoolWorker(poolOptions)
+  Object.defineProperty(worker, 'name', { value: 'fastforks' })
+  return worker
 }
 
 function usesDebugger(poolOptions) {
@@ -36,6 +43,6 @@ export function fastForks(options = {}) {
   return {
     name: 'fastforks',
     createPoolWorker: (poolOptions) =>
-      usesDebugger(poolOptions) ? new DebugPoolWorker(poolOptions) : new FastForksPoolWorker(poolOptions, context),
+      usesDebugger(poolOptions) ? createDebugPoolWorker(poolOptions) : new FastForksPoolWorker(poolOptions, context),
   }
 }
