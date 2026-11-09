@@ -74,8 +74,12 @@ async function run(pool) {
       seen.push(await waitForSummary(() => output))
     }
   } finally {
+    // Windows cannot delete the directory while a process uses it, so wait
+    // for Vitest to exit, and retry while its child processes exit.
+    const exited = new Promise((resolve) => child.once('exit', resolve))
     child.kill()
-    rmSync(dir, { recursive: true, force: true })
+    await exited
+    rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
   }
   return seen
 }
