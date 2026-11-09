@@ -17,10 +17,18 @@
     "binding.gyp",
     "prebuilds"
   ],
+  "scripts": {
+    "build": "node-gyp rebuild",
+    "test": "node test/run.mjs"
+  },
   "engines": {
     "node": ">=20"
   },
   "peerDependencies": {
     "vitest": ">=4.0.0 <6.0.0"
+  },
+  "devDependencies": {
+    "node-gyp": "13.1.0",
+    "vitest": "5.1.0"
   }
 }
