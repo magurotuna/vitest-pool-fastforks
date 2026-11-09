@@ -2,15 +2,23 @@
 // The child process. Creates one Node.js Environment per test file with the
 // addon and runs vitest's worker (init() from vitest/worker) inside it.
 // Messages from the main process are routed by worker id.
-// { addon, workerUrl, argv1, cpu }, set by pool.mjs.
+// { addon, workerUrl, argv1, inspector, cpu }, set by pool.mjs.
 const options = JSON.parse(process.env.VITEST_POOL_FASTFORKS_HOST);
 delete process.env.VITEST_POOL_FASTFORKS_HOST;
 const addon = require(options.addon);
 
-// EnvironmentFlags: kOwnsProcessState | kNoCreateInspector. Without
-// kOwnsProcessState, process.chdir() in a test fails a CHECK and aborts this
-// process, because the restored context keeps the main thread's methods.
-const FLAGS = (1 << 1) | (1 << 9);
+// EnvironmentFlags: kOwnsProcessState, and kNoCreateInspector unless the
+// tests need node:inspector (V8 coverage). Without kOwnsProcessState,
+// process.chdir() in a test fails a CHECK and aborts this process, because
+// the restored context keeps the main thread's methods.
+const FLAGS = (1 << 1) | (options.inspector ? 0 : 1 << 9);
+if (options.inspector) {
+  // V8 shares compiled functions between the Environments through its
+  // compilation cache. When each test file starts and stops precise
+  // coverage, the counts of the shared functions get lost, so V8 coverage
+  // differs from a fork.
+  require('node:v8').setFlagsFromString('--no-compilation-cache');
+}
 
 // The Environment sees the same process.argv and process.execArgv as a fork.
 const argv = [process.argv[0], options.argv1];

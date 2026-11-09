@@ -69,6 +69,7 @@ function spawnHost(options, context, key, idle, blob) {
         addon: context.addon,
         workerUrl: pathToFileURL(resolve(options.distPath, 'worker.js')).href,
         argv1: resolve(options.distPath, 'workers/forks.js'),
+        inspector: needsInspector(options),
         cpu: process.env.VITEST_POOL_FASTFORKS_CPU,
       }),
     },
@@ -119,6 +120,15 @@ function spawnHost(options, context, key, idle, blob) {
   return host
 }
 
+// The V8 coverage provider reads coverage through node:inspector in each
+// test file's Environment. Like Vitest, treat every provider other than
+// istanbul as one that may need it.
+function needsInspector(options) {
+  if (process.env.VITEST_POOL_FASTFORKS_INSPECTOR) return process.env.VITEST_POOL_FASTFORKS_INSPECTOR === '1'
+  const coverage = options.project.vitest.config.coverage
+  return Boolean(coverage?.enabled && coverage.provider !== 'istanbul')
+}
+
 function setRef(child, ref) {
   for (const handle of [child, child.channel, child.stdout, child.stderr]) {
     if (ref) handle?.ref()
@@ -163,7 +173,7 @@ async function startHost(options, context, key, idle) {
 async function acquireHost(options, context) {
   const vitest = options.project.vitest
   if (!idleHosts.has(vitest)) idleHosts.set(vitest, new Map())
-  const key = JSON.stringify([options.execArgv, options.env])
+  const key = JSON.stringify([options.execArgv, options.env, needsInspector(options)])
   const byKey = idleHosts.get(vitest)
   if (!byKey.has(key)) byKey.set(key, [])
   const idle = byKey.get(key)

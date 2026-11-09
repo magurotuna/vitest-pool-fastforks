@@ -22,6 +22,8 @@ const FIXTURES = {
   projects: ['projects', []],
   stdio: ['stdio', []],
   handles: ['handles', []],
+  'coverage-v8': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=v8']],
+  'coverage-istanbul': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=istanbul']],
 }
 
 const { values, positionals } = parseArgs({
@@ -43,7 +45,17 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
     const report = join(dir, `${pool}.json`)
     const run = spawnSync(
       process.execPath,
-      [vitest, 'run', '--configLoader', 'runner', '--reporter=verbose', '--reporter=json', `--outputFile.json=${report}`, ...args],
+      [
+        vitest,
+        'run',
+        '--configLoader',
+        'runner',
+        '--reporter=verbose',
+        '--reporter=json',
+        `--outputFile.json=${report}`,
+        `--coverage.reportsDirectory=${join(dir, `${pool}-coverage`)}`,
+        ...args,
+      ],
       {
         cwd: join(root, 'fixtures', fixture),
         env: { ...process.env, POOL: pool, FASTFORKS_FALLBACK: process.env.FASTFORKS_FALLBACK ?? 'error' },
@@ -59,7 +71,14 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
     } catch (error) {
       parsed = { error: `no report: ${error.message}` }
     }
-    results[pool] = { code: run.status, signal: run.signal, ...parsed, stdout: run.stdout ?? '', stderr: run.stderr ?? '' }
+    results[pool] = {
+      code: run.status,
+      signal: run.signal,
+      ...parsed,
+      coverage: args.includes('--coverage.enabled') ? coverageCounts(join(dir, `${pool}-coverage`)) : undefined,
+      stdout: run.stdout ?? '',
+      stderr: run.stderr ?? '',
+    }
   }
   const [base, ...others] = pools
   for (const pool of others) {
@@ -95,9 +114,26 @@ function summarize(report) {
   return { files, tests, success: report.success }
 }
 
+// The hit counts of every statement, branch, and function, by file name.
+function coverageCounts(dir) {
+  try {
+    const coverage = JSON.parse(readFileSync(join(dir, 'coverage-final.json'), 'utf8'))
+    const counts = {}
+    for (const [file, { s, b, f }] of Object.entries(coverage)) {
+      counts[file.replaceAll('\\', '/').split('/').pop()] = JSON.stringify({ s, b, f })
+    }
+    return counts
+  } catch (error) {
+    return { error: error.message }
+  }
+}
+
 function compare(a, b) {
   const diff = []
   if (a.error || b.error) return [a.error, b.error].filter(Boolean)
+  for (const file of new Set([...Object.keys(a.coverage ?? {}), ...Object.keys(b.coverage ?? {})])) {
+    if (a.coverage[file] !== b.coverage[file]) diff.push(`coverage ${file}: ${a.coverage[file]} -> ${b.coverage[file]}`)
+  }
   if (a.code !== b.code) diff.push(`exit code: ${a.code} -> ${b.code}`)
   if (a.success !== b.success) diff.push(`success: ${a.success} -> ${b.success}`)
   for (const kind of ['files', 'tests']) {
