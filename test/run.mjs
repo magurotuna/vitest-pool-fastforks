@@ -22,6 +22,7 @@ const FIXTURES = {
   projects: ['projects', []],
   stdio: ['stdio', []],
   handles: ['handles', []],
+  changing: ['changing', ['--maxWorkers=1']],
   'coverage-v8': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=v8']],
   'coverage-istanbul': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=istanbul']],
 }
