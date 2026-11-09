@@ -8,6 +8,7 @@ const marker = require("node:path").join(__dirname, ".crash-next-create")
 if (process.env.POOL === "fastforks" && !process.env.VITEST_POOL_FASTFORKS_HOST && fs.existsSync(marker)) {
   if (fs.readFileSync(marker, "utf8") === String(process.pid)) {
     fs.rmSync(marker)
-    process.kill(process.pid, "SIGSEGV")
+    // Not process.kill(): Windows ignores SIGSEGV.
+    process.reallyExit(139)
   }
 }

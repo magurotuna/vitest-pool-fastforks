@@ -93,7 +93,9 @@ if (contextsLog) {
   gc = require('node:vm').runInNewContext('gc');
 }
 
+let freed = 0;
 function free(id) {
+  freed++;
   const s = environments.get(id);
   environments.delete(id);
   if (s) {
@@ -128,7 +130,7 @@ if (options.cpu) {
   const prefix = options.cpu;
   process.on('exit', () => {
     const { userCPUTime: user, systemCPUTime: system, maxRSS } = process.resourceUsage();
-    require('node:fs').writeFileSync(`${prefix}.${process.pid}.json`, JSON.stringify({ user, system, maxRSS }));
+    require('node:fs').writeFileSync(`${prefix}.${process.pid}.json`, JSON.stringify({ user, system, maxRSS, files: freed }));
   });
 }
 

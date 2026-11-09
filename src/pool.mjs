@@ -177,21 +177,23 @@ async function startHost(options, context, key, registry) {
 
 // At most two child processes per worker: Vitest starts the next test file
 // before the previous one is stopped, and freeing an Environment takes time.
-// Each child process stays within its share of half of the memory, by
-// default.
+// The default memory limit of a child process is the one that Vitest uses for
+// the workers of vmForks and vmThreads.
 function getRegistry(options, context) {
   const vitest = options.project.vitest
   let registry = registries.get(vitest)
   if (!registry) {
-    const limit = 2 * (vitest.config.maxWorkers || availableParallelism())
+    const { maxWorkers, watch } = vitest.config
+    const workers = Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : availableParallelism()
+    const memory = (process.constrainedMemory?.() || totalmem()) / (watch ? 2 : 1)
     registry = {
       hosts: new Set(),
       // Idle child processes, least recently used first.
       idle: [],
       // Calls waiting for a child process to become idle or to exit.
       waiters: [],
-      limit,
-      memoryLimit: context.memoryLimit ?? totalmem() / 2 / limit,
+      limit: 2 * workers,
+      memoryLimit: context.memoryLimit ?? memory / workers,
     }
     registries.set(vitest, registry)
   }

@@ -21,7 +21,8 @@ export interface FastForksOptions {
    * memory (RSS) after a test file is above this limit, the pool stops it and
    * starts a new one. Bytes, or a percentage of the system memory such as
    * `'10%'`.
-   * @default half of the system memory divided by twice the number of workers
+   * @default the system memory (half of it in watch mode) divided by the
+   * number of workers, as Vitest's `vmMemoryLimit`
    */
   memoryLimit?: number | string
 }
