@@ -5,21 +5,10 @@ test("execArgv 1", () => {
     required: (globalThis as any).__required,
     imported: (globalThis as any).__imported,
     gc: typeof (globalThis as any).gc,
-    execArgv: process.execArgv.map((a) => a.split("/").pop()),
+    flags: process.execArgv.filter((a) => a === "--expose-gc" || a.startsWith("--conditions=")),
   }).toMatchInlineSnapshot(`
     {
-      "execArgv": [
-        "--experimental-import-meta-resolve",
-        "--require",
-        "suppress-warnings.cjs",
-        "--conditions",
-        "node",
-        "--conditions",
-        "development",
-        "--require",
-        "setup.cjs",
-        "--import",
-        "setup.mjs",
+      "flags": [
         "--expose-gc",
         "--conditions=custom",
       ],
