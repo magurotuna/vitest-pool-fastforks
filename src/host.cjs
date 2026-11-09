@@ -104,8 +104,8 @@ if (options.cpu) {
   // time(1) of the main process misses its CPU time.
   const prefix = options.cpu;
   process.on('exit', () => {
-    const { user, system } = process.cpuUsage();
-    require('node:fs').writeFileSync(`${prefix}.${process.pid}.json`, JSON.stringify({ user, system }));
+    const { userCPUTime: user, systemCPUTime: system, maxRSS } = process.resourceUsage();
+    require('node:fs').writeFileSync(`${prefix}.${process.pid}.json`, JSON.stringify({ user, system, maxRSS }));
   });
 }
 
