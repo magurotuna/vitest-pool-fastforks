@@ -1,8 +1,24 @@
 {
   "name": "vitest-pool-fastforks",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "A Vitest pool that isolates test files like forks, with a new Node.js environment per file in reused child processes",
+  "keywords": [
+    "node",
+    "pool",
+    "test",
+    "vitest",
+    "vitest-pool"
+  ],
+  "homepage": "https://github.com/magurotuna/vitest-pool-fastforks#readme",
+  "bugs": {
+    "url": "https://github.com/magurotuna/vitest-pool-fastforks/issues"
+  },
   "license": "MIT",
+  "author": "Yusuke Tanaka",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/magurotuna/vitest-pool-fastforks.git"
+  },
   "files": [
     "dist",
     "prebuilds",
