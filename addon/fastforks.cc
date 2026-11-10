@@ -112,20 +112,37 @@ void Global(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(node::GetMainContext(env)->Global());
 }
 
+// The contexts of freed Environments, until the GC collects them.
+std::vector<v8::Global<Context>> freed_contexts;
+
+// Tells V8 that the context goes away, as a browser does for a page. V8 then
+// drops the maps that it keeps alive for the context (without this, a normal
+// full GC does not collect the context) and the pending FinalizationRegistry
+// callbacks of the context. Such a callback would run in a freed Environment
+// and abort the process.
+void DisposeContext(Isolate* isolate, Local<Context> context) {
+  Context::Scope context_scope(context);
+  isolate->ContextDisposedNotification(v8::ContextDependants::kSomeDependants);
+}
+
 // free(id)
 void Free(const FunctionCallbackInfo<Value>& args) {
   node::Environment* env = GetEnv(args);
   if (env == nullptr) return;
   Isolate* isolate = args.GetIsolate();
   {
-    // Tell V8 that the Environment's context goes away, as a browser does
-    // for a page. V8 then drops the pending FinalizationRegistry callbacks of
-    // the context (they would run later in a freed Environment and abort the
-    // process) and the maps that it keeps alive for the context (without
-    // this, a normal full GC does not collect the freed contexts).
     v8::HandleScope handle_scope(isolate);
-    Context::Scope context_scope(node::GetMainContext(env));
-    isolate->ContextDisposedNotification(v8::ContextDependants::kSomeDependants);
+    // A context of an earlier file lives until the next full GC. A minor GC
+    // before that can still queue its FinalizationRegistry callbacks, and
+    // FreeEnvironment() below runs queued callbacks. Drop them first.
+    std::erase_if(freed_contexts, [](const v8::Global<Context>& c) { return c.IsEmpty(); });
+    for (const v8::Global<Context>& freed : freed_contexts) {
+      DisposeContext(isolate, freed.Get(isolate));
+    }
+    Local<Context> context = node::GetMainContext(env);
+    DisposeContext(isolate, context);
+    freed_contexts.emplace_back(isolate, context);
+    freed_contexts.back().SetWeak();
   }
   node::FreeEnvironment(env);
   envs[args[0].As<v8::Uint32>()->Value()] = nullptr;
