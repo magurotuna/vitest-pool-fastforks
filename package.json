@@ -34,7 +34,7 @@
   },
   "scripts": {
     "build": "node-gyp rebuild",
-    "pack": "vp pack",
+    "build:js": "vp pack",
     "prepack": "vp pack",
     "check": "vp check",
     "test": "node test/run.mjs",

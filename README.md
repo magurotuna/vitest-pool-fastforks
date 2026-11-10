@@ -122,7 +122,7 @@ You need Node.js v26.11.0 or later, Python, and a C++ compiler (for the native a
 
 ```sh
 npm ci
-npm run pack          # Build dist/ with vp pack.
+npm run build:js      # Build dist/ with vp pack.
 npm run build         # Build the native addon with node-gyp.
 npm run check         # Format, lint, and type check with vp check.
 npm run test:unit     # Unit tests with vp test.

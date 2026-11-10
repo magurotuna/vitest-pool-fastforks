@@ -43,7 +43,7 @@ jobs:
         with:
           node-version: 26.13.0
       - run: npm ci
-      - run: npm run pack
+      - run: npm run build:js
       - run: npm run build
       - run: npm test -- --out results
       - run: node test/watch.mjs
@@ -73,7 +73,7 @@ jobs:
       - run: npm install --no-save "vitest@$VERSION" "@vitest/coverage-v8@$VERSION" "@vitest/coverage-istanbul@$VERSION" # zizmor: ignore[adhoc-packages]
         env:
           VERSION: ${{ matrix.vitest }}
-      - run: npm run pack
+      - run: npm run build:js
       - run: npm run build
       - run: npm test -- --out results
       - run: node test/watch.mjs
@@ -90,7 +90,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
-      - run: npm run pack
+      - run: npm run build:js
       - run: npm test -- --out results basic exit
         env:
           FASTFORKS_FALLBACK: forks
