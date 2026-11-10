@@ -13,13 +13,15 @@
   "files": [
     "index.d.ts",
     "src",
+    "prebuilds",
     "addon",
-    "binding.gyp",
-    "prebuilds"
+    "binding.gyp"
   ],
+  "gypfile": false,
   "scripts": {
     "build": "node-gyp rebuild",
-    "test": "node test/run.mjs"
+    "test": "node test/run.mjs",
+    "copy-prebuild": "node scripts/copy-prebuild.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -21,7 +21,7 @@ export function detect() {
   const addon = findAddon()
   if (!addon) {
     return {
-      reason: `no native addon for ${process.platform}-${process.arch} and Node.js ABI ${process.versions.modules}`,
+      reason: `no native addon for ${platformTag()} and Node.js ABI ${process.versions.modules}`,
     }
   }
   try {
@@ -32,9 +32,18 @@ export function detect() {
   return { addon }
 }
 
+// The directory of the prebuilt addon, for example linux-x64-glibc or
+// darwin-arm64. On Linux, an addon built against glibc does not load with
+// musl (Alpine), and the other way around.
+export function platformTag() {
+  if (process.platform !== 'linux') return `${process.platform}-${process.arch}`
+  const glibc = process.report?.getReport().header.glibcVersionRuntime
+  return `linux-${process.arch}-${glibc ? 'glibc' : 'musl'}`
+}
+
 function findAddon() {
   const candidates = [
-    `../prebuilds/${process.platform}-${process.arch}/node.abi${process.versions.modules}.node`,
+    `../prebuilds/${platformTag()}/node.abi${process.versions.modules}.node`,
     '../build/Release/fastforks.node',
   ]
   for (const candidate of candidates) {
