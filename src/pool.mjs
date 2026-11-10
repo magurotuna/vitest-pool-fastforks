@@ -14,14 +14,24 @@ const hostScript = fileURLToPath(new URL('./host.cjs', import.meta.url))
 // The child processes of each Vitest instance. A child process keeps the
 // execArgv, the env, and the output streams that it started with, so an idle
 // child process runs only test files with the same key.
-const registries = new WeakMap()
-const allHosts = new Set()
-let nextId = 0
-let warnedBlob = false
-
-process.on('exit', () => {
-  for (const host of allHosts) host.child.kill()
+//
+// Vite can load this module once per config file (a project config that
+// imports the pool from outside node_modules). Keep one state per process,
+// so that the limits hold for all copies.
+const shared = (globalThis[Symbol.for('vitest-pool-fastforks')] ??= {
+  registries: new WeakMap(),
+  allHosts: new Set(),
+  nextId: 0,
+  warnedBlob: false,
 })
+const { registries, allHosts } = shared
+
+if (!shared.exitHook) {
+  shared.exitHook = true
+  process.on('exit', () => {
+    for (const host of allHosts) host.child.kill()
+  })
+}
 
 class Host {
   constructor(child, key, registry) {
@@ -159,8 +169,8 @@ async function startHost(options, context, key, registry) {
   // A blob from another build of the same Node.js version can make the
   // child process fail before it is ready. Start again without the blob.
   discardSnapshotBlob(blob)
-  if (!warnedBlob) {
-    warnedBlob = true
+  if (!shared.warnedBlob) {
+    shared.warnedBlob = true
     options.project.vitest.logger.warn(
       `[vitest-pool-fastforks] A child process exited ${host.exitReason} with the cached startup snapshot ${blob}. Starting without it.`,
     )
@@ -259,7 +269,7 @@ export class FastForksPoolWorker {
   constructor(options, context) {
     this.options = options
     this.context = context
-    this.id = nextId++
+    this.id = shared.nextId++
     this.host = undefined
     this.listeners = []
   }
