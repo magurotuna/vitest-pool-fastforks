@@ -1,8 +1,10 @@
 node_modules/
 build/
 prebuilds/
+dist/
 *.tmp
 *.tgz
 test/.results/
 test/fixtures/.watch-*/
 results/
+.direnv/

@@ -9,13 +9,11 @@ const require = createRequire(import.meta.url)
 // share one isolate (nodejs/node#65977, nodejs/node#66239).
 const MINIMUM = [26, 11, 0]
 
-/** @returns {{ addon: string } | { reason: string }} */
-export function detect() {
+export function detect(): { addon: string } | { reason: string } {
   if (process.env.VITEST_POOL_FASTFORKS === '0') {
     return { reason: 'VITEST_POOL_FASTFORKS=0 is set' }
   }
-  const version = process.versions.node.split('.').map(Number)
-  if (compare(version, MINIMUM) < 0) {
+  if (!isAtLeast(process.versions.node, MINIMUM)) {
     return { reason: `Node.js v${MINIMUM.join('.')} or later is required (current: ${process.version})` }
   }
   const addon = findAddon()
@@ -27,21 +25,33 @@ export function detect() {
   try {
     require(addon)
   } catch (error) {
-    return { reason: `the native addon failed to load: ${error.message}` }
+    return { reason: `the native addon failed to load: ${(error as Error).message}` }
   }
   return { addon }
 }
 
-// The directory of the prebuilt addon, for example linux-x64-glibc or
-// darwin-arm64. On Linux, an addon built against glibc does not load with
-// musl (Alpine), and the other way around.
-export function platformTag() {
+/**
+ * The directory of the prebuilt addon, for example linux-x64-glibc or
+ * darwin-arm64. On Linux, an addon built against glibc does not load with
+ * musl (Alpine), and the other way around.
+ */
+export function platformTag(): string {
   if (process.platform !== 'linux') return `${process.platform}-${process.arch}`
-  const glibc = process.report?.getReport().header.glibcVersionRuntime
-  return `linux-${process.arch}-${glibc ? 'glibc' : 'musl'}`
+  const report = process.report?.getReport() as { header?: { glibcVersionRuntime?: string } } | undefined
+  return `linux-${process.arch}-${report?.header?.glibcVersionRuntime ? 'glibc' : 'musl'}`
 }
 
-function findAddon() {
+/** Whether the version (for example '26.13.0') is the minimum or later. */
+export function isAtLeast(version: string, minimum: number[]): boolean {
+  const parts = version.split('.').map(Number)
+  for (let i = 0; i < minimum.length; i++) {
+    const part = parts[i] ?? 0
+    if (part !== minimum[i]) return part > minimum[i]!
+  }
+  return true
+}
+
+function findAddon(): string | undefined {
   const candidates = [
     `../prebuilds/${platformTag()}/node.abi${process.versions.modules}.node`,
     '../build/Release/fastforks.node',
@@ -51,11 +61,4 @@ function findAddon() {
     if (existsSync(path)) return path
   }
   return undefined
-}
-
-function compare(a, b) {
-  for (let i = 0; i < 3; i++) {
-    if (a[i] !== b[i]) return a[i] - b[i]
-  }
-  return 0
 }

@@ -15,6 +15,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Format, lint, type check, and unit tests.
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26.13.0
+      - run: npm ci
+      - run: npm run check
+      - run: npm run test:unit
+
   test:
     strategy:
       fail-fast: false
@@ -29,6 +43,7 @@ jobs:
         with:
           node-version: 26.13.0
       - run: npm ci
+      - run: npm run pack
       - run: npm run build
       - run: npm test -- --out results
       - run: node test/watch.mjs
@@ -57,6 +72,7 @@ jobs:
       - run: npm install --no-save vitest@$VERSION @vitest/coverage-v8@$VERSION @vitest/coverage-istanbul@$VERSION
         env:
           VERSION: ${{ matrix.vitest }}
+      - run: npm run pack
       - run: npm run build
       - run: npm test -- --out results
       - run: node test/watch.mjs
@@ -73,6 +89,7 @@ jobs:
         with:
           node-version: 24
       - run: npm ci
+      - run: npm run pack
       - run: npm test -- --out results basic exit
         env:
           FASTFORKS_FALLBACK: forks

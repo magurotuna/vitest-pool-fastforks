@@ -51,11 +51,11 @@ fastForks({
 })
 ```
 
-| Option | Default | Description |
-| --- | --- | --- |
-| `fallback` | `'forks'` | What to do when this pool cannot run (see [Requirements](#requirements)). `'forks'` prints a warning and uses the `forks` pool. `'error'` throws an error. |
-| `snapshot` | `true` | Start the child processes from a startup snapshot that has the Node.js built-in modules that Vitest uses. The pool builds the snapshot on the first run (about 0.4 seconds) and keeps it in the temporary directory of the operating system. |
-| `memoryLimit` | The memory of the system (half of it in watch mode) divided by the number of workers, like Vitest's `vmMemoryLimit` | When a child process uses more memory (RSS) than this after a test file, the pool stops it and starts a new one. Bytes, or a percentage of the memory of the system, such as `'10%'`. |
+| Option        | Default                                                                                                             | Description                                                                                                                                                                                                                                  |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fallback`    | `'forks'`                                                                                                           | What to do when this pool cannot run (see [Requirements](#requirements)). `'forks'` prints a warning and uses the `forks` pool. `'error'` throws an error.                                                                                   |
+| `snapshot`    | `true`                                                                                                              | Start the child processes from a startup snapshot that has the Node.js built-in modules that Vitest uses. The pool builds the snapshot on the first run (about 0.4 seconds) and keeps it in the temporary directory of the operating system. |
+| `memoryLimit` | The memory of the system (half of it in watch mode) divided by the number of workers, like Vitest's `vmMemoryLimit` | When a child process uses more memory (RSS) than this after a test file, the pool stops it and starts a new one. Bytes, or a percentage of the memory of the system, such as `'10%'`.                                                        |
 
 To use the `forks` pool without changing the config, set the environment variable `VITEST_POOL_FASTFORKS=0`.
 
@@ -68,16 +68,16 @@ Seven open source projects, run with the `forks` pool and with this pool. Both p
 - Method: the median wall time of 3 runs, in seconds.
 - Conditions: "16 vCPUs" uses Vitest's default number of workers. "4 vCPUs" limits the run to 4 CPUs, like a common CI runner.
 
-| Project | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| [readest](https://github.com/readest/readest) | 1,265 | 351.8 → 142.3 | 2.47× | 423.0 → 198.5 | 2.13× |
-| [Vuetify](https://github.com/vuetifyjs/vuetify) | 81 | 9.6 → 6.1 | 1.59× | 31.8 → 14.2 | 2.24× |
-| [Material UI](https://github.com/mui/material-ui) | 467 | 64.2 → 43.5 | 1.48× | 222.8 → 110.6 | 2.01× |
-| [Base UI](https://github.com/mui/base-ui) | 394 | 91.3 → 64.3 | 1.42× | 325.7 → 219.6 | 1.48× |
-| [MUI X](https://github.com/mui/mui-x) | 996 | 420.8 → 306.7 | 1.37× | 1,254.2 → 781.2 | 1.61× |
-| [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`) | 217 | 6.6 → 5.6 | 1.18× | 23.1 → 13.7 | 1.69× |
-| [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests) | 20 | 4.6 → 4.4 | 1.04× | 3.8 → 4.0 | 0.96× |
-| Total | 3,440 | 948.9 → 572.9 | 1.66× | 2,284.4 → 1,341.8 | 1.70× |
+| Project                                                                      | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
+| ---------------------------------------------------------------------------- | ---------: | --------------------------: | -------: | -------------------------: | -------: |
+| [readest](https://github.com/readest/readest)                                |      1,265 |               351.8 → 142.3 |    2.47× |              423.0 → 198.5 |    2.13× |
+| [Vuetify](https://github.com/vuetifyjs/vuetify)                              |         81 |                   9.6 → 6.1 |    1.59× |                31.8 → 14.2 |    2.24× |
+| [Material UI](https://github.com/mui/material-ui)                            |        467 |                 64.2 → 43.5 |    1.48× |              222.8 → 110.6 |    2.01× |
+| [Base UI](https://github.com/mui/base-ui)                                    |        394 |                 91.3 → 64.3 |    1.42× |              325.7 → 219.6 |    1.48× |
+| [MUI X](https://github.com/mui/mui-x)                                        |        996 |               420.8 → 306.7 |    1.37× |            1,254.2 → 781.2 |    1.61× |
+| [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`)                 |        217 |                   6.6 → 5.6 |    1.18× |                23.1 → 13.7 |    1.69× |
+| [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests) |         20 |                   4.6 → 4.4 |    1.04× |                  3.8 → 4.0 |    0.96× |
+| Total                                                                        |      3,440 |               948.9 → 572.9 |    1.66× |          2,284.4 → 1,341.8 |    1.70× |
 
 The speed-up is largest when a project has many small test files, because then the start of each file takes most of the time. On the 500-file happy-dom suite of [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition), this pool took 12.5 seconds and `forks` took 36.2 seconds (2.9×, 8 CPUs).
 
@@ -115,6 +115,20 @@ The speed-up is largest when a project has many small test files, because then t
 - **The pool prints `Using the "forks" pool instead`.** The message tells you which requirement is missing. Use `fallback: 'error'` to make it an error, for example in CI.
 - **A test fails only with this pool.** Run it with the `forks` pool (`VITEST_POOL_FASTFORKS=0`) to confirm, and report it with the test and the error.
 - **`A child process exited ... Starting the file in a new child process.`** A child process stopped before a test file started (for example, it crashed because of an earlier file). The pool runs the file in a new child process, so the result is not lost.
+
+## Development
+
+You need Node.js v26.11.0 or later, Python, and a C++ compiler (for the native addon). If you use Nix with direnv, run `direnv allow` to get them from `flake.nix`.
+
+```sh
+npm ci
+npm run pack          # Build dist/ with vp pack.
+npm run build         # Build the native addon with node-gyp.
+npm run check         # Format, lint, and type check with vp check.
+npm run test:unit     # Unit tests with vp test.
+npm test              # Run each fixture with forks and with this pool, and compare.
+node test/watch.mjs   # Compare watch mode.
+```
 
 ## License
 

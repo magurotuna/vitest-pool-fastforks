@@ -8,6 +8,7 @@ import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, 
 import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { splitNodeOptions } from './node-options.ts'
 
 const entry = fileURLToPath(new URL('./snapshot-entry.cjs', import.meta.url))
 const packageJson = fileURLToPath(new URL('../package.json', import.meta.url))
@@ -62,31 +63,31 @@ const TAKES_VALUE = new Set([
 ])
 
 /** Whether the blob behaves the same as no blob with these Node.js flags. */
-export function canUseSnapshotBlob(execArgv, nodeOptions = '') {
-  const args = [...nodeOptions.split(/\s+/).filter(Boolean), ...execArgv]
+export function canUseSnapshotBlob(execArgv: string[], nodeOptions = ''): boolean {
+  const args = [...splitNodeOptions(nodeOptions), ...execArgv]
   for (let i = 0; i < args.length; i++) {
-    const [name, value] = args[i].split(/=(.*)/s)
-    if (!SAME_WITH_BLOB.has(name)) return false
-    if (value === undefined && TAKES_VALUE.has(name)) i++
+    const [name, value] = args[i]!.split(/=(.*)/s)
+    if (!SAME_WITH_BLOB.has(name!)) return false
+    if (value === undefined && TAKES_VALUE.has(name!)) i++
   }
   return true
 }
 
-let pending
+let pending: Promise<string | undefined> | undefined
 
 /** Resolves to the blob path, or undefined if the blob cannot be built. */
-export function getSnapshotBlob() {
+export function getSnapshotBlob(): Promise<string | undefined> {
   pending ??= build().catch(() => undefined)
   return pending
 }
 
 /** The blob made a child process fail to start: do not use it again. */
-export function discardSnapshotBlob(path) {
+export function discardSnapshotBlob(path: string): void {
   rmSync(path, { force: true })
   pending = Promise.resolve(undefined)
 }
 
-function cacheKey() {
+function cacheKey(): string {
   const execPath = realpathSync(process.execPath)
   const stat = statSync(execPath)
   const hash = createHash('sha256')
@@ -106,7 +107,7 @@ function cacheKey() {
   return hash.digest('hex').slice(0, 16)
 }
 
-function cacheDir() {
+function cacheDir(): string {
   let user = 'user'
   try {
     user = String(userInfo().uid >= 0 ? userInfo().uid : userInfo().username)
@@ -114,7 +115,7 @@ function cacheDir() {
   return join(tmpdir(), `vitest-pool-fastforks-${user}`)
 }
 
-async function build() {
+async function build(): Promise<string> {
   const dir = cacheDir()
   const blob = join(dir, `${process.version}-${cacheKey()}.blob`)
   if (existsSync(blob)) return blob
@@ -123,7 +124,7 @@ async function build() {
   // a half-written blob.
   const temporary = `${blob}.${process.pid}.tmp`
   try {
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       execFile(process.execPath, ['--snapshot-blob', temporary, '--build-snapshot', entry], (error) =>
         error ? reject(error) : resolve(),
       )

@@ -3,36 +3,42 @@
   "version": "0.0.0",
   "description": "A Vitest pool that isolates test files like forks, with a new Node.js environment per file in reused child processes",
   "license": "MIT",
-  "type": "module",
-  "exports": {
-    ".": {
-      "types": "./index.d.ts",
-      "default": "./src/index.mjs"
-    }
-  },
   "files": [
-    "index.d.ts",
-    "src",
+    "dist",
     "prebuilds",
     "addon",
     "binding.gyp"
   ],
-  "gypfile": false,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
   "scripts": {
     "build": "node-gyp rebuild",
+    "pack": "vp pack",
+    "prepack": "vp pack",
+    "check": "vp check",
     "test": "node test/run.mjs",
-    "copy-prebuild": "node scripts/copy-prebuild.mjs"
+    "test:unit": "vp test",
+    "copy-prebuild": "node scripts/copy-prebuild.ts"
   },
-  "engines": {
-    "node": ">=20"
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@vitest/coverage-istanbul": "5.1.0",
+    "@vitest/coverage-v8": "5.1.0",
+    "node-gyp": "13.1.0",
+    "typescript": "7.0.2",
+    "vite-plus": "1.5.1",
+    "vitest": "5.1.0"
   },
   "peerDependencies": {
     "vitest": ">=4.0.0 <6.0.0"
   },
-  "devDependencies": {
-    "@vitest/coverage-istanbul": "5.1.0",
-    "@vitest/coverage-v8": "5.1.0",
-    "node-gyp": "13.1.0",
-    "vitest": "5.1.0"
-  }
+  "engines": {
+    "node": ">=20"
+  },
+  "gypfile": false
 }

@@ -8,7 +8,7 @@ import { cpSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { parseArgs } from 'node:util'
+import { parseArgs, stripVTControlCharacters } from 'node:util'
 
 const { values } = parseArgs({ options: { pools: { type: 'string', default: 'forks,fastforks' } } })
 const root = dirname(fileURLToPath(import.meta.url))
@@ -22,8 +22,20 @@ const STEPS = [
   [[], 'Tests  2 passed'],
   [[['src/value.ts', 'export const value = 2\n']], 'Tests  1 failed'],
   [[['src/value.ts', 'export const value = 1\n']], 'Tests  1 passed'],
-  [[['lib/required.cjs', 'module.exports = 2\n'], ['required.test.ts', requiredTest(2)]], 'Tests  1 failed'],
-  [[['lib/required.cjs', 'module.exports = 1\n'], ['required.test.ts', requiredTest(1)]], 'Tests  1 passed'],
+  [
+    [
+      ['lib/required.cjs', 'module.exports = 2\n'],
+      ['required.test.ts', requiredTest(2)],
+    ],
+    'Tests  1 failed',
+  ],
+  [
+    [
+      ['lib/required.cjs', 'module.exports = 1\n'],
+      ['required.test.ts', requiredTest(1)],
+    ],
+    'Tests  1 passed',
+  ],
 ]
 
 function requiredTest(step) {
@@ -87,7 +99,7 @@ async function run(pool) {
 async function waitForSummary(read) {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
-    const text = read().replace(/\x1B\[[0-9;]*m/g, '')
+    const text = stripVTControlCharacters(read())
     const match = /Tests {2}[^\n]*?(?=\s*\(\d+\))/.exec(text)
     if (match && /(Waiting|Watching) for file changes/.test(text)) return match[0].trim()
     await new Promise((resolve) => setTimeout(resolve, 100))

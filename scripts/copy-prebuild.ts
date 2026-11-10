@@ -2,10 +2,10 @@
 // where the package looks for it, and removes the build so that the tests
 // load the prebuilt addon.
 //
-// Usage: node scripts/copy-prebuild.mjs [arch]
+// Usage: node scripts/copy-prebuild.ts [arch]
 // arch: the CPU of a cross-compiled build (node-gyp rebuild --arch=<arch>).
 import { copyFileSync, mkdirSync, rmSync } from 'node:fs'
-import { platformTag } from '../src/support.mjs'
+import { platformTag } from '../src/support.ts'
 
 const arch = process.argv[2]
 const tag = arch ? platformTag().replace(process.arch, arch) : platformTag()

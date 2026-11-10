@@ -90,7 +90,10 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
   for (const pool of others) {
     const diff = compare(results[base], results[pool])
     if (name === 'stdio') {
-      for (const [stream, text] of [['stdout', 'RAW-STDOUT'], ['stderr', 'RAW-STDERR']]) {
+      for (const [stream, text] of [
+        ['stdout', 'RAW-STDOUT'],
+        ['stderr', 'RAW-STDERR'],
+      ]) {
         for (const p of [base, pool]) {
           if (!results[p][stream].includes(text)) diff.push(`${p}: ${text} is missing from ${stream}`)
         }
