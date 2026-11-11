@@ -68,6 +68,11 @@ Seven open source projects, run with the `forks` pool and with this pool. Both p
 - Method: the median wall time of 3 runs, in seconds.
 - Conditions: "16 vCPUs" uses Vitest's default number of workers. "4 vCPUs" limits the run to 4 CPUs, like a common CI runner.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/speed-dark.svg">
+  <img alt="Bar chart of the speed-up over the forks pool. With 16 vCPUs, the speed-up is 1.04× to 2.47× per project and 1.66× for all 7 projects. With 4 vCPUs, it is 0.96× to 2.24× per project and 1.70× for all 7 projects. The table below has the same numbers." src="docs/speed-light.svg" width="760">
+</picture>
+
 | Project                                                                      | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
 | ---------------------------------------------------------------------------- | ---------: | --------------------------: | -------: | -------------------------: | -------: |
 | [readest](https://github.com/readest/readest)                                |      1,265 |               351.8 → 142.3 |    2.47× |              423.0 → 198.5 |    2.13× |
@@ -118,17 +123,20 @@ The speed-up is largest when a project has many small test files, because then t
 
 ## Development
 
-You need Node.js v26.11.0 or later, Python, and a C++ compiler (for the native addon). If you use Nix with direnv, run `direnv allow` to get them from `flake.nix`.
+You need Node.js v26.11.0 or later, Python, a C++ compiler (for the native addon), and clang-format 21 (to format the addon). If you use Nix with direnv, run `direnv allow` to get them from `flake.nix`.
 
 ```sh
 npm ci
 npm run build:js      # Build dist/ with vp pack.
 npm run build         # Build the native addon with node-gyp.
 npm run check         # Format, lint, and type check with vp check.
+npm run check:cc      # Check the format of the addon with clang-format.
 npm run test:unit     # Unit tests with vp test.
 npm test              # Run each fixture with forks and with this pool, and compare.
 node test/watch.mjs   # Compare watch mode.
 ```
+
+The chart in [Results](#results) comes from `scripts/speed-chart.ts`. After you change the numbers in it, run `node scripts/speed-chart.ts`.
 
 ## License
 

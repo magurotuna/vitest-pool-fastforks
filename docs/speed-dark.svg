@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="548" viewBox="0 0 760 548" role="img" font-family="system-ui, -apple-system, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif">
+<title>Speed-up over the forks pool</title>
+<desc>readest: 2.47× with 16 vCPUs, 2.13× with 4 vCPUs. Vuetify: 1.59× with 16 vCPUs, 2.24× with 4 vCPUs. Material UI: 1.48× with 16 vCPUs, 2.01× with 4 vCPUs. Base UI: 1.42× with 16 vCPUs, 1.48× with 4 vCPUs. MUI X: 1.37× with 16 vCPUs, 1.61× with 4 vCPUs. Vitest (test/unit): 1.18× with 16 vCPUs, 1.69× with 4 vCPUs. Instructure UI: 1.04× with 16 vCPUs, 0.96× with 4 vCPUs. All 7 projects: 1.66× with 16 vCPUs, 1.70× with 4 vCPUs.</desc>
+<rect x="0.5" y="0.5" width="759" height="547" rx="8" fill="#1a1a19" stroke="rgba(255,255,255,0.10)"/>
+<text x="24" y="36" font-size="17" font-weight="600" fill="#f0efec" text-anchor="start">Speed-up over the forks pool</text>
+<text x="24" y="58" font-size="12.5" font-weight="400" fill="#c3c2b7" text-anchor="start">Higher is better. 1× takes the same time as forks. Median of 3 runs. Both pools gave the same test results.</text>
+<rect x="24" y="76" width="12" height="12" rx="3" fill="#3987e5"/>
+<text x="42" y="86.5" font-size="12.5" font-weight="400" fill="#f0efec" text-anchor="start">16 vCPUs (Vitest’s default workers)</text>
+<rect x="315" y="76" width="12" height="12" rx="3" fill="#d95926"/>
+<text x="333" y="86.5" font-size="12.5" font-weight="400" fill="#f0efec" text-anchor="start">4 vCPUs (like a CI runner)</text>
+<line x1="200" x2="200" y1="120" y2="496" stroke="#2c2c2a" stroke-width="1"/>
+<text x="200" y="514" font-size="11.5" font-weight="400" fill="#898781" text-anchor="middle">0×</text>
+<line x1="300" x2="300" y1="120" y2="496" stroke="#2c2c2a" stroke-width="1"/>
+<text x="300" y="514" font-size="11.5" font-weight="400" fill="#898781" text-anchor="middle">0.5×</text>
+<line x1="400" x2="400" y1="120" y2="496" stroke="#383835" stroke-width="1"/>
+<text x="400" y="514" font-size="11.5" font-weight="400" fill="#898781" text-anchor="middle">1×</text>
+<line x1="500" x2="500" y1="120" y2="496" stroke="#2c2c2a" stroke-width="1"/>
+<text x="500" y="514" font-size="11.5" font-weight="400" fill="#898781" text-anchor="middle">1.5×</text>
+<line x1="600" x2="600" y1="120" y2="496" stroke="#2c2c2a" stroke-width="1"/>
+<text x="600" y="514" font-size="11.5" font-weight="400" fill="#898781" text-anchor="middle">2×</text>
+<line x1="700" x2="700" y1="120" y2="496" stroke="#2c2c2a" stroke-width="1"/>
+<text x="700" y="514" font-size="11.5" font-weight="400" fill="#898781" text-anchor="middle">2.5×</text>
+<text x="400" y="112" font-size="11.5" font-weight="400" fill="#c3c2b7" text-anchor="middle">forks</text>
+<text x="24" y="140" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">readest</text>
+<text x="24" y="156" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">1,265 test files</text>
+<path fill="#3987e5" d="M200 128H690A4 4 0 0 1 694 132V138A4 4 0 0 1 690 142H200Z"/>
+<text x="700" y="139.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2.47×</text>
+<path fill="#d95926" d="M200 144H622A4 4 0 0 1 626 148V154A4 4 0 0 1 622 158H200Z"/>
+<text x="632" y="155.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2.13×</text>
+<text x="24" y="186" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">Vuetify</text>
+<text x="24" y="202" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">81 test files</text>
+<path fill="#3987e5" d="M200 174H514A4 4 0 0 1 518 178V184A4 4 0 0 1 514 188H200Z"/>
+<text x="524" y="185.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.59×</text>
+<path fill="#d95926" d="M200 190H644A4 4 0 0 1 648 194V200A4 4 0 0 1 644 204H200Z"/>
+<text x="654" y="201.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2.24×</text>
+<text x="24" y="232" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">Material UI</text>
+<text x="24" y="248" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">467 test files</text>
+<path fill="#3987e5" d="M200 220H492A4 4 0 0 1 496 224V230A4 4 0 0 1 492 234H200Z"/>
+<text x="502" y="231.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.48×</text>
+<path fill="#d95926" d="M200 236H598A4 4 0 0 1 602 240V246A4 4 0 0 1 598 250H200Z"/>
+<text x="608" y="247.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">2.01×</text>
+<text x="24" y="278" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">Base UI</text>
+<text x="24" y="294" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">394 test files</text>
+<path fill="#3987e5" d="M200 266H480A4 4 0 0 1 484 270V276A4 4 0 0 1 480 280H200Z"/>
+<text x="490" y="277.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.42×</text>
+<path fill="#d95926" d="M200 282H492A4 4 0 0 1 496 286V292A4 4 0 0 1 492 296H200Z"/>
+<text x="502" y="293.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.48×</text>
+<text x="24" y="324" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">MUI X</text>
+<text x="24" y="340" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">996 test files</text>
+<path fill="#3987e5" d="M200 312H470A4 4 0 0 1 474 316V322A4 4 0 0 1 470 326H200Z"/>
+<text x="480" y="323.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.37×</text>
+<path fill="#d95926" d="M200 328H518A4 4 0 0 1 522 332V338A4 4 0 0 1 518 342H200Z"/>
+<text x="528" y="339.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.61×</text>
+<text x="24" y="370" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">Vitest (test/unit)</text>
+<text x="24" y="386" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">217 test files</text>
+<path fill="#3987e5" d="M200 358H432A4 4 0 0 1 436 362V368A4 4 0 0 1 432 372H200Z"/>
+<text x="442" y="369.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.18×</text>
+<path fill="#d95926" d="M200 374H534A4 4 0 0 1 538 378V384A4 4 0 0 1 534 388H200Z"/>
+<text x="544" y="385.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.69×</text>
+<text x="24" y="416" font-size="13" font-weight="400" fill="#f0efec" text-anchor="start">Instructure UI</text>
+<text x="24" y="432" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">20 test files</text>
+<path fill="#3987e5" d="M200 404H404A4 4 0 0 1 408 408V414A4 4 0 0 1 404 418H200Z"/>
+<text x="414" y="415.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.04×</text>
+<path fill="#d95926" d="M200 420H388A4 4 0 0 1 392 424V430A4 4 0 0 1 388 434H200Z"/>
+<text x="398" y="431.5" font-size="12" font-weight="400" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">0.96×</text>
+<line x1="24" x2="736" y1="446" y2="446" stroke="#383835"/>
+<text x="24" y="470" font-size="13" font-weight="600" fill="#f0efec" text-anchor="start">All 7 projects</text>
+<text x="24" y="486" font-size="11.5" font-weight="400" fill="#898781" text-anchor="start">3,440 test files</text>
+<path fill="#3987e5" d="M200 458H528A4 4 0 0 1 532 462V468A4 4 0 0 1 528 472H200Z"/>
+<text x="538" y="469.5" font-size="12" font-weight="600" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.66×</text>
+<path fill="#d95926" d="M200 474H536A4 4 0 0 1 540 478V484A4 4 0 0 1 536 488H200Z"/>
+<text x="546" y="485.5" font-size="12" font-weight="600" fill="#f0efec" text-anchor="start" stroke="#1a1a19" stroke-width="4" stroke-linejoin="round" paint-order="stroke">1.70×</text>
+</svg>
