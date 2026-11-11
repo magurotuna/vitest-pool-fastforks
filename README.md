@@ -18,7 +18,7 @@ A new environment is faster to create than a new process, and the process keeps 
 
 ## Requirements
 
-- Node.js v26.11.0 or later. Earlier versions cannot run more than one environment in a process ([nodejs/node#65977](https://github.com/nodejs/node/pull/65977), [nodejs/node#66239](https://github.com/nodejs/node/pull/66239)).
+- Node.js `^26.11.0` (v26.11.0 or later, but less than v27). Earlier versions cannot run more than one environment in a process ([nodejs/node#65977](https://github.com/nodejs/node/pull/65977), [nodejs/node#66239](https://github.com/nodejs/node/pull/66239)). The prebuilt addons are only for Node.js 26.
 - Vitest 4.0 or later, before 6.0.
 - A prebuilt [native addon](https://nodejs.org/api/addons.html) for your platform: Linux (x64 and arm64, glibc and musl), macOS (arm64 and x64), and Windows (x64).
 
