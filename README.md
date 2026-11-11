@@ -2,6 +2,13 @@
 
 A Vitest pool that isolates every test file like the `forks` pool, and runs faster.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/results-dark.svg">
+  <img alt="Bar charts of the wall time with forks and with this pool, one per project, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.04× to 2.47× faster per project and 1.66× faster for all 7 projects. With 4 vCPUs, it is 1.04× slower to 2.24× faster per project and 1.70× faster for all 7 projects. The Results section has the same numbers in a table." src="docs/results-light.svg" width="800">
+</picture>
+
+On 7 open source projects (3,440 test files), both pools gave the same test results. In total, this pool was 1.66× faster with 16 vCPUs and 1.70× faster with 4 vCPUs. See [Results](#results) for the method and the table.
+
 > [!WARNING]
 > This pool is experimental. Use it with Vitest's `forks` pool as the reference: if a test behaves differently, please report it.
 
@@ -67,11 +74,6 @@ Seven open source projects, run with the `forks` pool and with this pool. Both p
 - Software: Node.js v26.13.0. Vitest 5.1.0, except mui-x (5.0.5).
 - Method: the median wall time of 3 runs, in seconds.
 - Conditions: "16 vCPUs" uses all CPUs. "4 vCPUs" limits the run to 4 CPUs (`taskset -c 0-3`), like a common CI runner. Both use Vitest's default number of workers (15 and 3), except readest, whose config sets `maxWorkers: 4`.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/results-dark.svg">
-  <img alt="Bar charts of the wall time with forks and with this pool, one per project, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.04× to 2.47× faster per project and 1.66× faster for all 7 projects. With 4 vCPUs, it is 1.04× slower to 2.24× faster per project and 1.70× faster for all 7 projects. The table below has the same numbers." src="docs/results-light.svg" width="800">
-</picture>
 
 | Project                                                                      | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
 | ---------------------------------------------------------------------------- | ---------: | --------------------------: | -------: | -------------------------: | -------: |
