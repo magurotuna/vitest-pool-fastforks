@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="846" viewBox="0 0 800 846" role="img" font-family="system-ui, -apple-system, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="930" viewBox="0 0 800 930" role="img" font-family="system-ui, -apple-system, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif">
 <title>Wall time of the test run: forks and this pool</title>
-<desc>readest, 16 vCPUs: forks 351.8 s, this pool 142.3 s, 2.47× faster. readest, 4 vCPUs: forks 423.0 s, this pool 198.5 s, 2.13× faster. Vuetify, 16 vCPUs: forks 9.6 s, this pool 6.1 s, 1.59× faster. Vuetify, 4 vCPUs: forks 31.8 s, this pool 14.2 s, 2.24× faster. Material UI, 16 vCPUs: forks 64.2 s, this pool 43.5 s, 1.48× faster. Material UI, 4 vCPUs: forks 222.8 s, this pool 110.6 s, 2.01× faster. Base UI, 16 vCPUs: forks 91.3 s, this pool 64.3 s, 1.42× faster. Base UI, 4 vCPUs: forks 325.7 s, this pool 219.6 s, 1.48× faster. MUI X, 16 vCPUs: forks 420.8 s, this pool 306.7 s, 1.37× faster. MUI X, 4 vCPUs: forks 1,254.2 s, this pool 781.2 s, 1.61× faster. Vitest (test/unit), 16 vCPUs: forks 6.6 s, this pool 5.6 s, 1.18× faster. Vitest (test/unit), 4 vCPUs: forks 23.1 s, this pool 13.7 s, 1.69× faster. Instructure UI, 16 vCPUs: forks 4.6 s, this pool 4.4 s, 1.04× faster. Instructure UI, 4 vCPUs: forks 3.8 s, this pool 4.0 s, 1.04× slower. All 7 projects, 16 vCPUs: forks 948.9 s, this pool 572.9 s, 1.66× faster. All 7 projects, 4 vCPUs: forks 2,284.4 s, this pool 1,341.8 s, 1.70× faster.</desc>
-<rect x="0.5" y="0.5" width="799" height="845" rx="8" fill="#1a1a19" stroke="rgba(255,255,255,0.10)"/>
+<desc>readest, 16 vCPUs: forks 351.8 s, this pool 142.3 s, 2.47× faster. readest, 4 vCPUs: forks 423.0 s, this pool 198.5 s, 2.13× faster. Vuetify, 16 vCPUs: forks 9.6 s, this pool 6.1 s, 1.59× faster. Vuetify, 4 vCPUs: forks 31.8 s, this pool 14.2 s, 2.24× faster. Material UI, 16 vCPUs: forks 64.2 s, this pool 43.5 s, 1.48× faster. Material UI, 4 vCPUs: forks 222.8 s, this pool 110.6 s, 2.01× faster. Base UI, 16 vCPUs: forks 91.3 s, this pool 64.3 s, 1.42× faster. Base UI, 4 vCPUs: forks 325.7 s, this pool 219.6 s, 1.48× faster. MUI X, 16 vCPUs: forks 420.8 s, this pool 306.7 s, 1.37× faster. MUI X, 4 vCPUs: forks 1,254.2 s, this pool 781.2 s, 1.61× faster. Vitest (test/unit), 16 vCPUs: forks 6.6 s, this pool 5.6 s, 1.18× faster. Vitest (test/unit), 4 vCPUs: forks 23.1 s, this pool 13.7 s, 1.69× faster. Instructure UI, 16 vCPUs: forks 4.6 s, this pool 4.4 s, 1.04× faster. Instructure UI, 4 vCPUs: forks 3.8 s, this pool 4.0 s, 1.04× slower. All 7 projects, 16 vCPUs: forks 948.9 s, this pool 572.9 s, 1.66× faster. All 7 projects, 4 vCPUs: forks 2,284.4 s, this pool 1,341.8 s, 1.70× faster. Synthetic suite (js-test-runner-competition), 16 vCPUs: forks 29.1 s, this pool 11.1 s, 2.62× faster. Synthetic suite (js-test-runner-competition), 4 vCPUs: forks 109.3 s, this pool 31.9 s, 3.43× faster.</desc>
+<rect x="0.5" y="0.5" width="799" height="929" rx="8" fill="#1a1a19" stroke="rgba(255,255,255,0.10)"/>
 <text x="24" y="36" font-size="17" font-weight="600" fill="#f0efec" text-anchor="start">Wall time of the test run: forks and this pool</text>
 <text x="24" y="58" font-size="12.5" font-weight="400" fill="#c3c2b7" text-anchor="start">Shorter is better. Median of 3 runs.</text>
 <rect x="24" y="74" width="12" height="12" rx="3" fill="#6b6a65"/>
@@ -130,4 +130,20 @@
 <path fill="#3987e5" d="M510 765H623.4750481526878A4 4 0 0 1 627.4750481526878 769V775A4 4 0 0 1 623.4750481526878 779H510Z"/>
 <text x="633.4750481526878" y="776.5" font-size="12" font-weight="600" fill="#f0efec" text-anchor="start">1,341.8 s</text>
 <text x="510" y="804" font-size="13" font-weight="600" fill="#f0efec" text-anchor="start">1.70× faster</text>
+<line x1="24" x2="776" y1="816" y2="816" stroke="#383835"/>
+<text x="24" y="844" font-size="14" font-weight="600" fill="#f0efec" text-anchor="start">Synthetic suite</text>
+<text x="24" y="862" font-size="12" font-weight="400" fill="#c3c2b7" text-anchor="start">js-test-runner-competition</text>
+<text x="24" y="879" font-size="12" font-weight="400" fill="#898781" text-anchor="start">500 test files</text>
+<line x1="210" x2="210" y1="828" y2="866" stroke="#383835"/>
+<path fill="#6b6a65" d="M210 831H259.2479414455627A4 4 0 0 1 263.2479414455627 835V841A4 4 0 0 1 259.2479414455627 845H210Z"/>
+<text x="269.2479414455627" y="842.5" font-size="12" font-weight="400" fill="#c3c2b7" text-anchor="start">29.1 s</text>
+<path fill="#3987e5" d="M210 849H226.31107044830742A4 4 0 0 1 230.31107044830742 853V859A4 4 0 0 1 226.31107044830742 863H210Z"/>
+<text x="236.31107044830742" y="860.5" font-size="12" font-weight="600" fill="#f0efec" text-anchor="start">11.1 s</text>
+<text x="210" y="888" font-size="13" font-weight="600" fill="#f0efec" text-anchor="start">2.62× faster</text>
+<line x1="510" x2="510" y1="828" y2="866" stroke="#383835"/>
+<path fill="#6b6a65" d="M510 831H706A4 4 0 0 1 710 835V841A4 4 0 0 1 706 845H510Z"/>
+<text x="716" y="842.5" font-size="12" font-weight="400" fill="#c3c2b7" text-anchor="start">109.3 s</text>
+<path fill="#3987e5" d="M510 849H564.3714547118024A4 4 0 0 1 568.3714547118024 853V859A4 4 0 0 1 564.3714547118024 863H510Z"/>
+<text x="574.3714547118024" y="860.5" font-size="12" font-weight="600" fill="#f0efec" text-anchor="start">31.9 s</text>
+<text x="510" y="888" font-size="13" font-weight="600" fill="#f0efec" text-anchor="start">3.43× faster</text>
 </svg>

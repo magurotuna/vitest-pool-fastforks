@@ -4,7 +4,7 @@ A Vitest pool that isolates every test file like the `forks` pool, and runs fast
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/results-dark.svg">
-  <img alt="Bar charts of the wall time with forks and with this pool, one per project, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.04× to 2.47× faster per project and 1.66× faster for all 7 projects. With 4 vCPUs, it is 1.04× slower to 2.24× faster per project and 1.70× faster for all 7 projects. The Results section has the same numbers in a table." src="docs/results-light.svg" width="800">
+  <img alt="Bar charts of the wall time with forks and with this pool, one for each project and one for a synthetic suite, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.04× to 2.47× faster per project and 1.66× faster for all 7 projects. With 4 vCPUs, it is 1.04× slower to 2.24× faster per project and 1.70× faster for all 7 projects. On the synthetic suite of 500 test files, it is 2.62× faster with 16 vCPUs and 3.43× faster with 4 vCPUs. The Results section has the same numbers in a table." src="docs/results-light.svg" width="800">
 </picture>
 
 > [!WARNING]
@@ -66,25 +66,26 @@ To use the `forks` pool without changing the config, set the environment variabl
 
 ## Results
 
-Seven open source projects, run with the `forks` pool and with this pool. Both pools gave the same test results. The only differences were tests that are flaky with both pools, and two tests in Vitest's own suite that run only when the pool is named `forks`.
+Seven open source projects and one synthetic suite, run with the `forks` pool and with this pool. Both pools gave the same test results. The only differences were tests that are flaky with both pools, and two tests in Vitest's own suite that run only when the pool is named `forks`.
 
 - Machine: a virtual machine with 16 vCPUs (AMD EPYC, no SMT) and 31 GiB of memory, Linux.
 - Software: Node.js v26.13.0. Vitest 5.1.0, except mui-x (5.0.5).
 - Method: the median wall time of 3 runs, in seconds.
 - Conditions: "16 vCPUs" uses all CPUs. "4 vCPUs" limits the run to 4 CPUs (`taskset -c 0-3`), like a common CI runner. Both use Vitest's default number of workers (15 and 3), except readest, whose config sets `maxWorkers: 4`.
 
-| Project                                                                      | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
-| ---------------------------------------------------------------------------- | ---------: | --------------------------: | -------: | -------------------------: | -------: |
-| [readest](https://github.com/readest/readest)                                |      1,265 |               351.8 → 142.3 |    2.47× |              423.0 → 198.5 |    2.13× |
-| [Vuetify](https://github.com/vuetifyjs/vuetify)                              |         81 |                   9.6 → 6.1 |    1.59× |                31.8 → 14.2 |    2.24× |
-| [Material UI](https://github.com/mui/material-ui)                            |        467 |                 64.2 → 43.5 |    1.48× |              222.8 → 110.6 |    2.01× |
-| [Base UI](https://github.com/mui/base-ui)                                    |        394 |                 91.3 → 64.3 |    1.42× |              325.7 → 219.6 |    1.48× |
-| [MUI X](https://github.com/mui/mui-x)                                        |        996 |               420.8 → 306.7 |    1.37× |            1,254.2 → 781.2 |    1.61× |
-| [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`)                 |        217 |                   6.6 → 5.6 |    1.18× |                23.1 → 13.7 |    1.69× |
-| [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests) |         20 |                   4.6 → 4.4 |    1.04× |                  3.8 → 4.0 |    0.96× |
-| Total                                                                        |      3,440 |               948.9 → 572.9 |    1.66× |          2,284.4 → 1,341.8 |    1.70× |
+| Project                                                                                                                          | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
+| -------------------------------------------------------------------------------------------------------------------------------- | ---------: | --------------------------: | -------: | -------------------------: | -------: |
+| [readest](https://github.com/readest/readest)                                                                                    |      1,265 |               351.8 → 142.3 |    2.47× |              423.0 → 198.5 |    2.13× |
+| [Vuetify](https://github.com/vuetifyjs/vuetify)                                                                                  |         81 |                   9.6 → 6.1 |    1.59× |                31.8 → 14.2 |    2.24× |
+| [Material UI](https://github.com/mui/material-ui)                                                                                |        467 |                 64.2 → 43.5 |    1.48× |              222.8 → 110.6 |    2.01× |
+| [Base UI](https://github.com/mui/base-ui)                                                                                        |        394 |                 91.3 → 64.3 |    1.42× |              325.7 → 219.6 |    1.48× |
+| [MUI X](https://github.com/mui/mui-x)                                                                                            |        996 |               420.8 → 306.7 |    1.37× |            1,254.2 → 781.2 |    1.61× |
+| [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`)                                                                     |        217 |                   6.6 → 5.6 |    1.18× |                23.1 → 13.7 |    1.69× |
+| [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests)                                                     |         20 |                   4.6 → 4.4 |    1.04× |                  3.8 → 4.0 |    0.96× |
+| Total                                                                                                                            |      3,440 |               948.9 → 572.9 |    1.66× |          2,284.4 → 1,341.8 |    1.70× |
+| [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition) (synthetic, not in the total) |        500 |                 29.1 → 11.1 |    2.62× |               109.3 → 31.9 |    3.43× |
 
-The speed-up is largest when a project has many small test files, because then the start of each file takes most of the time. On the 500-file happy-dom suite of [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition), this pool took 12.5 seconds and `forks` took 36.2 seconds (2.9×, 8 CPUs).
+The speed-up is largest when a project has many small test files, because then the start of each file takes most of the time. The synthetic suite is an example: [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition) (commit `fb868f3`) generates 500 test files with 10 tests each in `fixture/tests/nomock/`, and they run with happy-dom.
 
 ## What stays the same as `forks`
 

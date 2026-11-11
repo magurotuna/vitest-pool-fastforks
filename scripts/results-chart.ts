@@ -13,6 +13,8 @@ interface Run {
 
 interface Row {
   name: string
+  /** A second line under the name. */
+  note?: string
   files: string
   /** 16 vCPUs, then 4 vCPUs. */
   runs: [Run, Run]
@@ -84,6 +86,16 @@ const total: Row = {
     { seconds: [2284.4, 1341.8], speedUp: 1.7 },
   ],
 }
+// Not in the total.
+const synthetic: Row = {
+  name: 'Synthetic suite',
+  note: 'js-test-runner-competition',
+  files: '500',
+  runs: [
+    { seconds: [29.1, 11.1], speedUp: 2.62 },
+    { seconds: [109.3, 31.9], speedUp: 3.43 },
+  ],
+}
 const columns = ['16 vCPUs', '4 vCPUs']
 
 const themes = {
@@ -144,7 +156,7 @@ function text(
 }
 
 function draw(theme: Theme): string {
-  const all = [...rows, total]
+  const all = [...rows, total, synthetic]
   const bottom = TOP + all.length * ROW + 8
   const height = bottom + 16
   const parts: string[] = []
@@ -173,12 +185,15 @@ function draw(theme: Theme): string {
   all.forEach((row, i) => {
     const top = TOP + i * ROW
     if (i > 0) {
-      const color = row === total ? theme.axis : theme.rule
+      const color = row === total || row === synthetic ? theme.axis : theme.rule
       parts.push(`<line x1="${MARGIN}" x2="${WIDTH - MARGIN}" y1="${top - 6}" y2="${top - 6}" stroke="${color}"/>`)
     }
     const weight = row === total ? 600 : 400
     parts.push(text(MARGIN, top + 22, row.name, { size: 14, weight: 600, fill: theme.primary }))
-    parts.push(text(MARGIN, top + 40, `${row.files} test files`, { size: 12, fill: theme.muted }))
+    if (row.note) {
+      parts.push(text(MARGIN, top + 40, row.note, { size: 12, fill: theme.secondary }))
+    }
+    parts.push(text(MARGIN, top + (row.note ? 57 : 40), `${row.files} test files`, { size: 12, fill: theme.muted }))
     // One time scale per project, so that both columns of a row compare.
     const max = Math.max(...row.runs.flatMap((run) => run.seconds))
     row.runs.forEach((run, c) => {
@@ -205,7 +220,7 @@ function draw(theme: Theme): string {
       row.runs
         .map(
           (run, c) =>
-            `${row.name}, ${columns[c]}: forks ${seconds(run.seconds[0])}, this pool ${seconds(run.seconds[1])}, ${ratio(run.speedUp)}`,
+            `${row.note ? `${row.name} (${row.note})` : row.name}, ${columns[c]}: forks ${seconds(run.seconds[0])}, this pool ${seconds(run.seconds[1])}, ${ratio(run.speedUp)}`,
         )
         .join('. '),
     )
