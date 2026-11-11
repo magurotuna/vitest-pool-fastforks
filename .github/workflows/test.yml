@@ -15,7 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Format, lint, type check, and unit tests.
+  # Format, lint, type check, and unit tests, also for the C++ addon.
   check:
     runs-on: ubuntu-latest
     steps:
@@ -28,6 +28,15 @@ jobs:
       - run: npm ci
       - run: npm run check
       - run: npm run test:unit
+      # The same version as clang-tools in flake.lock.
+      - run: pipx run clang-format==21.1.8 --dry-run --Werror addon/fastforks.cc
+      # Node.js builds addons with -Wall -Wextra. Fail on a warning in the
+      # addon's own code only: the Node.js headers can have warnings too.
+      - name: Build the addon without warnings in addon/
+        shell: bash
+        run: |
+          npm run build 2>&1 | tee build.log
+          if grep -E 'addon/[^:]+:[0-9]+:[0-9]+: warning:' build.log; then exit 1; fi
 
   test:
     strategy:

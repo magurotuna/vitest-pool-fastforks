@@ -37,6 +37,8 @@
     "build:js": "vp pack",
     "prepack": "vp pack",
     "check": "vp check",
+    "check:cc": "clang-format --dry-run --Werror addon/fastforks.cc",
+    "format:cc": "clang-format -i addon/fastforks.cc",
     "test": "node test/run.mjs",
     "test:unit": "vp test",
     "copy-prebuild": "node scripts/copy-prebuild.ts"

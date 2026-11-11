@@ -23,13 +23,14 @@
         in
         {
           # Node.js 26.11 or later runs the pool. Python and the C++ compiler
-          # of stdenv build the native addon with node-gyp. The vp command
-          # comes from the vite-plus package in node_modules: run it with
-          # npm scripts or npx.
+          # of stdenv build the native addon with node-gyp. clang-tools has
+          # clang-format for the addon. The vp command comes from the
+          # vite-plus package in node_modules: run it with npm scripts or npx.
           default = pkgs.mkShell {
             packages = [
               pkgs.nodejs_26
               pkgs.python3
+              pkgs.clang-tools
             ];
           };
         }

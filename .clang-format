@@ -1,0 +1,8 @@
+# The style of Node.js: Google, with one argument per line when the
+# arguments do not fit on one line.
+BasedOnStyle: Google
+AllowShortFunctionsOnASingleLine: Inline
+BinPackArguments: false
+BinPackParameters: false
+DerivePointerAlignment: false
+PointerAlignment: Left

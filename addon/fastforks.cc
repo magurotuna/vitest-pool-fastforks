@@ -55,9 +55,12 @@ void Create(const FunctionCallbackInfo<Value>& args) {
       args[0].As<v8::Uint32>()->Value());
   // Thread id 0, as in a fork (worker_threads.threadId). Node.js uses the id
   // only for the names of diagnostic files and in the inspector.
-  node::Environment* env = node::CreateEnvironment(
-      isolate_data, Local<Context>(), ToStrings(isolate, args[1]),
-      ToStrings(isolate, args[2]), flags, node::ThreadId{0});
+  node::Environment* env = node::CreateEnvironment(isolate_data,
+                                                   Local<Context>(),
+                                                   ToStrings(isolate, args[1]),
+                                                   ToStrings(isolate, args[2]),
+                                                   flags,
+                                                   node::ThreadId{0});
   if (env == nullptr) {
     isolate->ThrowError(
         String::NewFromUtf8Literal(isolate, "CreateEnvironment failed"));
@@ -77,8 +80,8 @@ void Load(const FunctionCallbackInfo<Value>& args) {
   String::Utf8Value source(isolate, args[1]);
   // LoadEnvironment() checks that the current context belongs to `env`.
   Context::Scope context_scope(node::GetMainContext(env));
-  MaybeLocal<Value> result = node::LoadEnvironment(
-      env, std::string_view(*source, source.length()));
+  MaybeLocal<Value> result =
+      node::LoadEnvironment(env, std::string_view(*source, source.length()));
   Local<Value> value;
   if (result.ToLocal(&value)) args.GetReturnValue().Set(value);
 }
@@ -135,7 +138,8 @@ void Free(const FunctionCallbackInfo<Value>& args) {
     // A context of an earlier file lives until the next full GC. A minor GC
     // before that can still queue its FinalizationRegistry callbacks, and
     // FreeEnvironment() below runs queued callbacks. Drop them first.
-    std::erase_if(freed_contexts, [](const v8::Global<Context>& c) { return c.IsEmpty(); });
+    std::erase_if(freed_contexts,
+                  [](const v8::Global<Context>& c) { return c.IsEmpty(); });
     for (const v8::Global<Context>& freed : freed_contexts) {
       DisposeContext(isolate, freed.Get(isolate));
     }
