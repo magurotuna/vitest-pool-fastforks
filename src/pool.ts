@@ -192,6 +192,19 @@ function needsInspector(options: PoolOptions): boolean {
   return Boolean(coverage?.enabled && coverage.provider !== 'istanbul')
 }
 
+// Like Vitest's forks pool: if a child process does not exit on SIGTERM, for
+// example because an 'exit' listener blocks, send SIGKILL.
+const KILL_TIMEOUT = 500
+// If a child process does not free an Environment in this time, stop it.
+const FREE_TIMEOUT = 10_000
+
+function killHost(host: Host): void {
+  if (host.exited || host.child.killed) return
+  host.child.kill()
+  const timer = setTimeout(() => host.child.kill('SIGKILL'), KILL_TIMEOUT)
+  host.events.once('exit', () => clearTimeout(timer))
+}
+
 function setRef(child: ChildProcess, ref: boolean): void {
   const handles: ({ ref(): unknown; unref(): unknown } | null | undefined)[] = [
     child,
@@ -246,7 +259,9 @@ async function startHost(options: PoolOptions, context: PoolContext, key: string
 function getRegistry(options: PoolOptions): Registry {
   const vitest = options.project.vitest
   let registry = registries.get(vitest)
-  if (!registry) {
+  // Vitest closes and starts again with the same instance when its config
+  // changes in watch mode.
+  if (!registry || registry.closed) {
     const { maxWorkers, watch } = vitest.config
     const workers = Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : availableParallelism()
     const memory = (process.constrainedMemory?.() || totalmem()) / (watch ? 2 : 1)
@@ -266,12 +281,15 @@ function getRegistry(options: PoolOptions): Registry {
   return registry
 }
 
-// Vitest calls this after it stopped every worker.
+// Vitest 5 calls this after it stopped every worker. Vitest 4 calls it while
+// it closes the pool, so a child process can still run a test file. Do not
+// stop that child process: releaseHost() stops it after the file.
 async function closeRegistry(registry: Registry): Promise<void> {
   registry.closed = true
-  const hosts = [...registry.hosts]
-  registry.hosts.clear()
-  registry.idle.length = 0
+  // allHosts also has the child processes that were stopped but did not exit
+  // yet.
+  const hosts = [...allHosts].filter((host) => host.registry === registry)
+  const idle = registry.idle.splice(0)
   notifyWaiters(registry)
   await Promise.all(
     hosts.map(
@@ -282,7 +300,7 @@ async function closeRegistry(registry: Registry): Promise<void> {
           // An idle child process does not keep the main process alive.
           // Wait for its exit.
           setRef(host.child, true)
-          host.child.kill()
+          if (idle.includes(host)) killHost(host)
         }),
     ),
   )
@@ -292,6 +310,8 @@ async function acquireHost(options: PoolOptions, context: PoolContext, { reuse =
   const registry = getRegistry(options)
   const key = JSON.stringify([options.execArgv, options.env, needsInspector(options)])
   for (let waited = false; ; waited = true) {
+    // closeRegistry() does not wait for a child process that starts after it.
+    if (registry.closed) throw new Error('[vitest-pool-fastforks] Vitest is closing')
     if (reuse) {
       const index = registry.idle.findLastIndex((host) => host.key === key)
       if (index !== -1) return registry.idle.splice(index, 1)[0]!
@@ -302,7 +322,7 @@ async function acquireHost(options: PoolOptions, context: PoolContext, { reuse =
       // key.
       const oldest = registry.idle.shift()!
       registry.hosts.delete(oldest)
-      oldest.child.kill()
+      killHost(oldest)
       break
     }
     if (waited) break
@@ -331,7 +351,7 @@ function releaseHost(host: Host, rss: number, memoryLimit: number | undefined): 
   // it gets large, as a fork would.
   if (registry.closed || rss > (memoryLimit ?? registry.memoryLimit) || registry.hosts.size > registry.limit) {
     registry.hosts.delete(host)
-    host.child.kill()
+    killHost(host)
   } else {
     // Let the main process exit while the child process is idle.
     setRef(host.child, false)
@@ -383,10 +403,19 @@ export class FastForksPoolWorker implements PoolWorker {
     this.listeners = []
     if (host.exited) return
     let freed: ControlMessage
+    let timer: NodeJS.Timeout | undefined
     try {
-      freed = await host.request('free', this.id, 'freed')
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error('The child process did not answer')), FREE_TIMEOUT)
+      })
+      freed = await Promise.race([host.request('free', this.id, 'freed'), timeout])
     } catch {
+      // The child process does not answer, or it closed its channel. It exits
+      // on 'disconnect', but an 'exit' listener can block it.
+      killHost(host)
       return
+    } finally {
+      clearTimeout(timer)
     }
     host.files++
     // The limit of this file's project: projects can set different limits.
