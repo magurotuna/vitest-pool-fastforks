@@ -170,7 +170,8 @@ jobs:
   # Publishes the package that the package job tested, for a version tag
   # only, and only after every platform passed. npm trusted publishing
   # (OpenID Connect) needs no token and adds provenance. The npm environment
-  # can require an approval before this job runs.
+  # can require an approval before this job runs. The job only stages the
+  # version: a maintainer approves it on npmjs.com with 2FA to publish it.
   publish:
     needs: [glibc, musl, macos, windows, package]
     if: startsWith(github.ref, 'refs/tags/v')
@@ -194,4 +195,4 @@ jobs:
             echo "The tag $GITHUB_REF_NAME is not the package version v$version" >&2
             exit 1
           fi
-      - run: npm publish --provenance --access public vitest-pool-fastforks-*.tgz
+      - run: npm stage publish --access public vitest-pool-fastforks-*.tgz
