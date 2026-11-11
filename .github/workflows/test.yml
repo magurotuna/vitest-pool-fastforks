@@ -81,8 +81,11 @@ jobs:
       - run: npm run build:js
       # Other Vitest versions on purpose, outside the lockfile. The vite-plus
       # dev dependency needs the Vitest version of the lockfile, so npm must
-      # ignore the peer dependencies.
-      - run: npm install --no-save --legacy-peer-deps "vitest@$VERSION" "@vitest/coverage-v8@$VERSION" "@vitest/coverage-istanbul@$VERSION" # zizmor: ignore[adhoc-packages]
+      # ignore the peer dependencies. Then npm also removes vite, a peer
+      # dependency of Vitest 5: install the vite version of the lockfile.
+      - run: | # zizmor: ignore[adhoc-packages]
+          vite=$(node -p "require('./node_modules/vite/package.json').version")
+          npm install --no-save --legacy-peer-deps "vitest@$VERSION" "@vitest/coverage-v8@$VERSION" "@vitest/coverage-istanbul@$VERSION" "vite@$vite"
         env:
           VERSION: ${{ matrix.vitest }}
       - run: npm run build

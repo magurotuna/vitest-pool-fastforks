@@ -62,7 +62,7 @@ if (!shared.exitHook) {
   })
 }
 
-class Host {
+export class Host {
   readonly events = new EventEmitter()
   files = 0
   exited = false
@@ -81,8 +81,16 @@ class Host {
   /** Sends a control message and waits for the reply with the same id. */
   request(type: ControlType, id: number, reply: ControlType): Promise<ControlMessage> {
     const replied = this.waitFor(reply, id)
-    if (!this.exited) this.child.send({ __fastforks_ctl: type, id } satisfies ControlMessage)
-    return replied
+    if (this.exited) return replied
+    // The send fails if the child process closed its channel but did not exit
+    // yet (EPIPE on Windows). With a callback, the error rejects the request
+    // instead of becoming an 'error' event of the child process.
+    const failed = new Promise<never>((_, reject) => {
+      this.child.send({ __fastforks_ctl: type, id } satisfies ControlMessage, (error) => {
+        if (error) reject(error)
+      })
+    })
+    return Promise.race([replied, failed])
   }
 
   waitFor(reply: ControlType, id?: number): Promise<ControlMessage> {
