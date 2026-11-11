@@ -69,8 +69,8 @@ Seven open source projects, run with the `forks` pool and with this pool. Both p
 - Conditions: "16 vCPUs" uses Vitest's default number of workers. "4 vCPUs" limits the run to 4 CPUs, like a common CI runner.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/speed-dark.svg">
-  <img alt="Bar chart of the speed-up over the forks pool. With 16 vCPUs, the speed-up is 1.04× to 2.47× per project and 1.66× for all 7 projects. With 4 vCPUs, it is 0.96× to 2.24× per project and 1.70× for all 7 projects. The table below has the same numbers." src="docs/speed-light.svg" width="760">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/results-dark.svg">
+  <img alt="Bar charts of the wall time with forks and with this pool, one per project, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.04× to 2.47× faster per project and 1.66× faster for all 7 projects. With 4 vCPUs, it is 1.04× slower to 2.24× faster per project and 1.70× faster for all 7 projects. The table below has the same numbers." src="docs/results-light.svg" width="800">
 </picture>
 
 | Project                                                                      | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
@@ -136,7 +136,7 @@ npm test              # Run each fixture with forks and with this pool, and comp
 node test/watch.mjs   # Compare watch mode.
 ```
 
-The chart in [Results](#results) comes from `scripts/speed-chart.ts`. After you change the numbers in it, run `node scripts/speed-chart.ts`.
+The chart in [Results](#results) comes from `scripts/results-chart.ts`. After you change the numbers in it, run `node scripts/results-chart.ts`.
 
 ## License
 

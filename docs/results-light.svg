@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="846" viewBox="0 0 800 846" role="img" font-family="system-ui, -apple-system, &quot;Segoe UI&quot;, Helvetica, Arial, sans-serif">
+<title>Wall time of the test run: forks and this pool</title>
+<desc>readest, 16 vCPUs: forks 351.8 s, this pool 142.3 s, 2.47× faster. readest, 4 vCPUs: forks 423.0 s, this pool 198.5 s, 2.13× faster. Vuetify, 16 vCPUs: forks 9.6 s, this pool 6.1 s, 1.59× faster. Vuetify, 4 vCPUs: forks 31.8 s, this pool 14.2 s, 2.24× faster. Material UI, 16 vCPUs: forks 64.2 s, this pool 43.5 s, 1.48× faster. Material UI, 4 vCPUs: forks 222.8 s, this pool 110.6 s, 2.01× faster. Base UI, 16 vCPUs: forks 91.3 s, this pool 64.3 s, 1.42× faster. Base UI, 4 vCPUs: forks 325.7 s, this pool 219.6 s, 1.48× faster. MUI X, 16 vCPUs: forks 420.8 s, this pool 306.7 s, 1.37× faster. MUI X, 4 vCPUs: forks 1,254.2 s, this pool 781.2 s, 1.61× faster. Vitest (test/unit), 16 vCPUs: forks 6.6 s, this pool 5.6 s, 1.18× faster. Vitest (test/unit), 4 vCPUs: forks 23.1 s, this pool 13.7 s, 1.69× faster. Instructure UI, 16 vCPUs: forks 4.6 s, this pool 4.4 s, 1.04× faster. Instructure UI, 4 vCPUs: forks 3.8 s, this pool 4.0 s, 1.04× slower. All 7 projects, 16 vCPUs: forks 948.9 s, this pool 572.9 s, 1.66× faster. All 7 projects, 4 vCPUs: forks 2,284.4 s, this pool 1,341.8 s, 1.70× faster.</desc>
+<rect x="0.5" y="0.5" width="799" height="845" rx="8" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
+<text x="24" y="36" font-size="17" font-weight="600" fill="#0b0b0b" text-anchor="start">Wall time of the test run: forks and this pool</text>
+<text x="24" y="58" font-size="12.5" font-weight="400" fill="#52514e" text-anchor="start">Shorter is better. Each project has its own time scale. Median of 3 runs.</text>
+<rect x="24" y="74" width="12" height="12" rx="3" fill="#898781"/>
+<text x="42" y="84.5" font-size="12.5" font-weight="400" fill="#0b0b0b" text-anchor="start">forks</text>
+<rect x="94" y="74" width="12" height="12" rx="3" fill="#2a78d6"/>
+<text x="112" y="84.5" font-size="12.5" font-weight="600" fill="#0b0b0b" text-anchor="start">vitest-pool-fastforks</text>
+<text x="210" y="124" font-size="13.5" font-weight="600" fill="#0b0b0b" text-anchor="start">16 vCPUs</text>
+<text x="282" y="124" font-size="12.5" font-weight="400" fill="#898781" text-anchor="start">Vitest’s default workers</text>
+<text x="510" y="124" font-size="13.5" font-weight="600" fill="#0b0b0b" text-anchor="start">4 vCPUs</text>
+<text x="574" y="124" font-size="12.5" font-weight="400" fill="#898781" text-anchor="start">like a CI runner</text>
+<line x1="24" x2="776" y1="140" y2="140" stroke="#c3c2b7"/>
+<text x="24" y="172" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">readest</text>
+<text x="24" y="190" font-size="12" font-weight="400" fill="#898781" text-anchor="start">1,265 test files</text>
+<line x1="210" x2="210" y1="156" y2="194" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 159H372.3356973995272A4 4 0 0 1 376.3356973995272 163V169A4 4 0 0 1 372.3356973995272 173H210Z"/>
+<text x="382.3356973995272" y="170.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">351.8 s</text>
+<path fill="#2a78d6" d="M210 177H273.2813238770686A4 4 0 0 1 277.2813238770686 181V187A4 4 0 0 1 273.2813238770686 191H210Z"/>
+<text x="283.2813238770686" y="188.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">142.3 s</text>
+<text x="210" y="216" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">2.47× faster</text>
+<line x1="510" x2="510" y1="156" y2="194" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 159H706A4 4 0 0 1 710 163V169A4 4 0 0 1 706 173H510Z"/>
+<text x="716" y="170.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">423.0 s</text>
+<path fill="#2a78d6" d="M510 177H599.8534278959811A4 4 0 0 1 603.8534278959811 181V187A4 4 0 0 1 599.8534278959811 191H510Z"/>
+<text x="609.8534278959811" y="188.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">198.5 s</text>
+<text x="510" y="216" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">2.13× faster</text>
+<line x1="24" x2="776" y1="228" y2="228" stroke="#e1e0d9"/>
+<text x="24" y="256" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">Vuetify</text>
+<text x="24" y="274" font-size="12" font-weight="400" fill="#898781" text-anchor="start">81 test files</text>
+<line x1="210" x2="210" y1="240" y2="278" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 243H266.37735849056605A4 4 0 0 1 270.37735849056605 247V253A4 4 0 0 1 266.37735849056605 257H210Z"/>
+<text x="276.37735849056605" y="254.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">9.6 s</text>
+<path fill="#2a78d6" d="M210 261H244.36477987421384A4 4 0 0 1 248.36477987421384 265V271A4 4 0 0 1 244.36477987421384 275H210Z"/>
+<text x="254.36477987421384" y="272.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">6.1 s</text>
+<text x="210" y="300" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.59× faster</text>
+<line x1="510" x2="510" y1="240" y2="278" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 243H706A4 4 0 0 1 710 247V253A4 4 0 0 1 706 257H510Z"/>
+<text x="716" y="254.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">31.8 s</text>
+<path fill="#2a78d6" d="M510 261H595.3081761006289A4 4 0 0 1 599.3081761006289 265V271A4 4 0 0 1 595.3081761006289 275H510Z"/>
+<text x="605.3081761006289" y="272.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">14.2 s</text>
+<text x="510" y="300" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">2.24× faster</text>
+<line x1="24" x2="776" y1="312" y2="312" stroke="#e1e0d9"/>
+<text x="24" y="340" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">Material UI</text>
+<text x="24" y="358" font-size="12" font-weight="400" fill="#898781" text-anchor="start">467 test files</text>
+<line x1="210" x2="210" y1="324" y2="362" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 327H263.6301615798923A4 4 0 0 1 267.6301615798923 331V337A4 4 0 0 1 263.6301615798923 341H210Z"/>
+<text x="273.6301615798923" y="338.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">64.2 s</text>
+<path fill="#2a78d6" d="M210 345H245.04847396768403A4 4 0 0 1 249.04847396768403 349V355A4 4 0 0 1 245.04847396768403 359H210Z"/>
+<text x="255.04847396768403" y="356.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">43.5 s</text>
+<text x="210" y="384" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.48× faster</text>
+<line x1="510" x2="510" y1="324" y2="362" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 327H706A4 4 0 0 1 710 331V337A4 4 0 0 1 706 341H510Z"/>
+<text x="716" y="338.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">222.8 s</text>
+<path fill="#2a78d6" d="M510 345H605.2818671454219A4 4 0 0 1 609.2818671454219 349V355A4 4 0 0 1 605.2818671454219 359H510Z"/>
+<text x="615.2818671454219" y="356.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">110.6 s</text>
+<text x="510" y="384" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">2.01× faster</text>
+<line x1="24" x2="776" y1="396" y2="396" stroke="#e1e0d9"/>
+<text x="24" y="424" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">Base UI</text>
+<text x="24" y="442" font-size="12" font-weight="400" fill="#898781" text-anchor="start">394 test files</text>
+<line x1="210" x2="210" y1="408" y2="446" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 411H262.0638624501075A4 4 0 0 1 266.0638624501075 415V421A4 4 0 0 1 262.0638624501075 425H210Z"/>
+<text x="272.0638624501075" y="422.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">91.3 s</text>
+<path fill="#2a78d6" d="M210 429H245.4841879029782A4 4 0 0 1 249.4841879029782 433V439A4 4 0 0 1 245.4841879029782 443H210Z"/>
+<text x="255.4841879029782" y="440.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">64.3 s</text>
+<text x="210" y="468" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.42× faster</text>
+<line x1="510" x2="510" y1="408" y2="446" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 411H706A4 4 0 0 1 710 415V421A4 4 0 0 1 706 425H510Z"/>
+<text x="716" y="422.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">325.7 s</text>
+<path fill="#2a78d6" d="M510 429H640.8480196499846A4 4 0 0 1 644.8480196499846 433V439A4 4 0 0 1 640.8480196499846 443H510Z"/>
+<text x="650.8480196499846" y="440.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">219.6 s</text>
+<text x="510" y="468" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.48× faster</text>
+<line x1="24" x2="776" y1="480" y2="480" stroke="#e1e0d9"/>
+<text x="24" y="508" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">MUI X</text>
+<text x="24" y="526" font-size="12" font-weight="400" fill="#898781" text-anchor="start">996 test files</text>
+<line x1="210" x2="210" y1="492" y2="530" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 495H273.1025354807846A4 4 0 0 1 277.1025354807846 499V505A4 4 0 0 1 273.1025354807846 509H210Z"/>
+<text x="283.1025354807846" y="506.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">420.8 s</text>
+<path fill="#2a78d6" d="M210 513H254.9076702280338A4 4 0 0 1 258.9076702280338 517V523A4 4 0 0 1 254.9076702280338 527H210Z"/>
+<text x="264.9076702280338" y="524.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">306.7 s</text>
+<text x="210" y="552" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.37× faster</text>
+<line x1="510" x2="510" y1="492" y2="530" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 495H706A4 4 0 0 1 710 499V505A4 4 0 0 1 706 509H510Z"/>
+<text x="716" y="506.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">1,254.2 s</text>
+<path fill="#2a78d6" d="M510 513H630.5734332642322A4 4 0 0 1 634.5734332642322 517V523A4 4 0 0 1 630.5734332642322 527H510Z"/>
+<text x="640.5734332642322" y="524.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">781.2 s</text>
+<text x="510" y="552" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.61× faster</text>
+<line x1="24" x2="776" y1="564" y2="564" stroke="#e1e0d9"/>
+<text x="24" y="592" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">Vitest (test/unit)</text>
+<text x="24" y="610" font-size="12" font-weight="400" fill="#898781" text-anchor="start">217 test files</text>
+<line x1="210" x2="210" y1="576" y2="614" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 579H263.1428571428571A4 4 0 0 1 267.1428571428571 583V589A4 4 0 0 1 263.1428571428571 593H210Z"/>
+<text x="273.1428571428571" y="590.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">6.6 s</text>
+<path fill="#2a78d6" d="M210 597H254.4848484848485A4 4 0 0 1 258.4848484848485 601V607A4 4 0 0 1 254.4848484848485 611H210Z"/>
+<text x="264.4848484848485" y="608.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">5.6 s</text>
+<text x="210" y="636" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.18× faster</text>
+<line x1="510" x2="510" y1="576" y2="614" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 579H706A4 4 0 0 1 710 583V589A4 4 0 0 1 706 593H510Z"/>
+<text x="716" y="590.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">23.1 s</text>
+<path fill="#2a78d6" d="M510 597H624.6147186147186A4 4 0 0 1 628.6147186147186 601V607A4 4 0 0 1 624.6147186147186 611H510Z"/>
+<text x="634.6147186147186" y="608.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">13.7 s</text>
+<text x="510" y="636" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.69× faster</text>
+<line x1="24" x2="776" y1="648" y2="648" stroke="#e1e0d9"/>
+<text x="24" y="676" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">Instructure UI</text>
+<text x="24" y="694" font-size="12" font-weight="400" fill="#898781" text-anchor="start">20 test files</text>
+<line x1="210" x2="210" y1="660" y2="698" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 663H406A4 4 0 0 1 410 667V673A4 4 0 0 1 406 677H210Z"/>
+<text x="416" y="674.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">4.6 s</text>
+<path fill="#2a78d6" d="M210 681H397.304347826087A4 4 0 0 1 401.304347826087 685V691A4 4 0 0 1 397.304347826087 695H210Z"/>
+<text x="407.304347826087" y="692.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">4.4 s</text>
+<text x="210" y="720" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.04× faster</text>
+<line x1="510" x2="510" y1="660" y2="698" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 663H671.2173913043478A4 4 0 0 1 675.2173913043478 667V673A4 4 0 0 1 671.2173913043478 677H510Z"/>
+<text x="681.2173913043478" y="674.5" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">3.8 s</text>
+<path fill="#2a78d6" d="M510 681H679.9130434782609A4 4 0 0 1 683.9130434782609 685V691A4 4 0 0 1 679.9130434782609 695H510Z"/>
+<text x="689.9130434782609" y="692.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">4.0 s</text>
+<text x="510" y="720" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.04× slower</text>
+<line x1="24" x2="776" y1="732" y2="732" stroke="#c3c2b7"/>
+<text x="24" y="760" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">All 7 projects</text>
+<text x="24" y="778" font-size="12" font-weight="400" fill="#898781" text-anchor="start">3,440 test files</text>
+<line x1="210" x2="210" y1="744" y2="782" stroke="#c3c2b7"/>
+<path fill="#898781" d="M210 747H289.0765189984241A4 4 0 0 1 293.0765189984241 751V757A4 4 0 0 1 289.0765189984241 761H210Z"/>
+<text x="299.0765189984241" y="758.5" font-size="12" font-weight="600" fill="#52514e" text-anchor="start">948.9 s</text>
+<path fill="#2a78d6" d="M210 765H256.1575906146034A4 4 0 0 1 260.1575906146034 769V775A4 4 0 0 1 256.1575906146034 779H210Z"/>
+<text x="266.1575906146034" y="776.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">572.9 s</text>
+<text x="210" y="804" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.66× faster</text>
+<line x1="510" x2="510" y1="744" y2="782" stroke="#c3c2b7"/>
+<path fill="#898781" d="M510 747H706A4 4 0 0 1 710 751V757A4 4 0 0 1 706 761H510Z"/>
+<text x="716" y="758.5" font-size="12" font-weight="600" fill="#52514e" text-anchor="start">2,284.4 s</text>
+<path fill="#2a78d6" d="M510 765H623.4750481526878A4 4 0 0 1 627.4750481526878 769V775A4 4 0 0 1 623.4750481526878 779H510Z"/>
+<text x="633.4750481526878" y="776.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">1,341.8 s</text>
+<text x="510" y="804" font-size="13" font-weight="600" fill="#0b0b0b" text-anchor="start">1.70× faster</text>
+</svg>
