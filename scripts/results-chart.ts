@@ -78,15 +78,6 @@ const rows: Row[] = [
     ],
   },
 ]
-const total: Row = {
-  name: 'All 7 projects',
-  files: '3,440',
-  runs: [
-    { seconds: [948.9, 572.9], speedUp: 1.66 },
-    { seconds: [2284.4, 1341.8], speedUp: 1.7 },
-  ],
-}
-// Not in the total.
 const synthetic: Row = {
   name: 'Synthetic suite',
   note: 'js-test-runner-competition',
@@ -156,7 +147,7 @@ function text(
 }
 
 function draw(theme: Theme): string {
-  const all = [...rows, total, synthetic]
+  const all = [...rows, synthetic]
   const bottom = TOP + all.length * ROW + 8
   const height = bottom + 16
   const parts: string[] = []
@@ -173,9 +164,9 @@ function draw(theme: Theme): string {
     }),
   )
   parts.push(`<rect x="${MARGIN}" y="74" width="12" height="12" rx="3" fill="${theme.forks}"/>`)
-  parts.push(text(MARGIN + 18, 84.5, 'forks', { size: 12.5, fill: theme.primary }))
-  parts.push(`<rect x="${MARGIN + 70}" y="74" width="12" height="12" rx="3" fill="${theme.pool}"/>`)
-  parts.push(text(MARGIN + 88, 84.5, 'vitest-pool-fastforks', { size: 12.5, weight: 600, fill: theme.primary }))
+  parts.push(text(MARGIN + 18, 84.5, "forks (Vitest's default)", { size: 12.5, fill: theme.primary }))
+  parts.push(`<rect x="${MARGIN + 166}" y="74" width="12" height="12" rx="3" fill="${theme.pool}"/>`)
+  parts.push(text(MARGIN + 184, 84.5, 'vitest-pool-fastforks', { size: 12.5, weight: 600, fill: theme.primary }))
 
   columns.forEach((title, c) => {
     parts.push(text(CELL_X[c]!, 124, title, { size: 13.5, weight: 600, fill: theme.primary }))
@@ -185,10 +176,9 @@ function draw(theme: Theme): string {
   all.forEach((row, i) => {
     const top = TOP + i * ROW
     if (i > 0) {
-      const color = row === total || row === synthetic ? theme.axis : theme.rule
+      const color = row === synthetic ? theme.axis : theme.rule
       parts.push(`<line x1="${MARGIN}" x2="${WIDTH - MARGIN}" y1="${top - 6}" y2="${top - 6}" stroke="${color}"/>`)
     }
-    const weight = row === total ? 600 : 400
     parts.push(text(MARGIN, top + 22, row.name, { size: 14, weight: 600, fill: theme.primary }))
     if (row.note) {
       parts.push(text(MARGIN, top + 40, row.note, { size: 12, fill: theme.secondary }))
@@ -206,7 +196,7 @@ function draw(theme: Theme): string {
         parts.push(
           text(x + length + 6, y + BAR - 2.5, seconds(value), {
             size: 12,
-            weight: s === 1 ? 600 : weight,
+            weight: s === 1 ? 600 : 400,
             fill: s === 1 ? theme.primary : theme.secondary,
           }),
         )
