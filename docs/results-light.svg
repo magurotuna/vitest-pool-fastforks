@@ -3,15 +3,13 @@
 <desc>readest, 16 vCPUs: forks 351.8 s, this pool 142.3 s, 2.47× faster. readest, 4 vCPUs: forks 423.0 s, this pool 198.5 s, 2.13× faster. Vuetify, 16 vCPUs: forks 9.6 s, this pool 6.1 s, 1.59× faster. Vuetify, 4 vCPUs: forks 31.8 s, this pool 14.2 s, 2.24× faster. Material UI, 16 vCPUs: forks 64.2 s, this pool 43.5 s, 1.48× faster. Material UI, 4 vCPUs: forks 222.8 s, this pool 110.6 s, 2.01× faster. Base UI, 16 vCPUs: forks 91.3 s, this pool 64.3 s, 1.42× faster. Base UI, 4 vCPUs: forks 325.7 s, this pool 219.6 s, 1.48× faster. MUI X, 16 vCPUs: forks 420.8 s, this pool 306.7 s, 1.37× faster. MUI X, 4 vCPUs: forks 1,254.2 s, this pool 781.2 s, 1.61× faster. Vitest (test/unit), 16 vCPUs: forks 6.6 s, this pool 5.6 s, 1.18× faster. Vitest (test/unit), 4 vCPUs: forks 23.1 s, this pool 13.7 s, 1.69× faster. Instructure UI, 16 vCPUs: forks 4.6 s, this pool 4.4 s, 1.04× faster. Instructure UI, 4 vCPUs: forks 3.8 s, this pool 4.0 s, 1.04× slower. All 7 projects, 16 vCPUs: forks 948.9 s, this pool 572.9 s, 1.66× faster. All 7 projects, 4 vCPUs: forks 2,284.4 s, this pool 1,341.8 s, 1.70× faster.</desc>
 <rect x="0.5" y="0.5" width="799" height="845" rx="8" fill="#fcfcfb" stroke="rgba(11,11,11,0.10)"/>
 <text x="24" y="36" font-size="17" font-weight="600" fill="#0b0b0b" text-anchor="start">Wall time of the test run: forks and this pool</text>
-<text x="24" y="58" font-size="12.5" font-weight="400" fill="#52514e" text-anchor="start">Shorter is better. Each project has its own time scale. Median of 3 runs.</text>
+<text x="24" y="58" font-size="12.5" font-weight="400" fill="#52514e" text-anchor="start">Shorter is better. Median of 3 runs.</text>
 <rect x="24" y="74" width="12" height="12" rx="3" fill="#898781"/>
 <text x="42" y="84.5" font-size="12.5" font-weight="400" fill="#0b0b0b" text-anchor="start">forks</text>
 <rect x="94" y="74" width="12" height="12" rx="3" fill="#2a78d6"/>
 <text x="112" y="84.5" font-size="12.5" font-weight="600" fill="#0b0b0b" text-anchor="start">vitest-pool-fastforks</text>
 <text x="210" y="124" font-size="13.5" font-weight="600" fill="#0b0b0b" text-anchor="start">16 vCPUs</text>
-<text x="282" y="124" font-size="12.5" font-weight="400" fill="#898781" text-anchor="start">Vitest’s default workers</text>
 <text x="510" y="124" font-size="13.5" font-weight="600" fill="#0b0b0b" text-anchor="start">4 vCPUs</text>
-<text x="574" y="124" font-size="12.5" font-weight="400" fill="#898781" text-anchor="start">like a CI runner</text>
 <line x1="24" x2="776" y1="140" y2="140" stroke="#c3c2b7"/>
 <text x="24" y="172" font-size="14" font-weight="600" fill="#0b0b0b" text-anchor="start">readest</text>
 <text x="24" y="190" font-size="12" font-weight="400" fill="#898781" text-anchor="start">1,265 test files</text>

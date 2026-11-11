@@ -84,10 +84,7 @@ const total: Row = {
     { seconds: [2284.4, 1341.8], speedUp: 1.7 },
   ],
 }
-const columns = [
-  ['16 vCPUs', 'Vitest’s default workers'],
-  ['4 vCPUs', 'like a CI runner'],
-]
+const columns = ['16 vCPUs', '4 vCPUs']
 
 const themes = {
   light: {
@@ -158,7 +155,7 @@ function draw(theme: Theme): string {
     text(MARGIN, 36, 'Wall time of the test run: forks and this pool', { size: 17, weight: 600, fill: theme.primary }),
   )
   parts.push(
-    text(MARGIN, 58, 'Shorter is better. Each project has its own time scale. Median of 3 runs.', {
+    text(MARGIN, 58, 'Shorter is better. Median of 3 runs.', {
       size: 12.5,
       fill: theme.secondary,
     }),
@@ -168,9 +165,8 @@ function draw(theme: Theme): string {
   parts.push(`<rect x="${MARGIN + 70}" y="74" width="12" height="12" rx="3" fill="${theme.pool}"/>`)
   parts.push(text(MARGIN + 88, 84.5, 'vitest-pool-fastforks', { size: 12.5, weight: 600, fill: theme.primary }))
 
-  columns.forEach(([title, note], c) => {
-    parts.push(text(CELL_X[c]!, 124, title!, { size: 13.5, weight: 600, fill: theme.primary }))
-    parts.push(text(CELL_X[c]! + title!.length * 8 + 8, 124, note!, { size: 12.5, fill: theme.muted }))
+  columns.forEach((title, c) => {
+    parts.push(text(CELL_X[c]!, 124, title, { size: 13.5, weight: 600, fill: theme.primary }))
   })
   parts.push(`<line x1="${MARGIN}" x2="${WIDTH - MARGIN}" y1="${TOP - 10}" y2="${TOP - 10}" stroke="${theme.axis}"/>`)
 
@@ -209,7 +205,7 @@ function draw(theme: Theme): string {
       row.runs
         .map(
           (run, c) =>
-            `${row.name}, ${columns[c]![0]}: forks ${seconds(run.seconds[0])}, this pool ${seconds(run.seconds[1])}, ${ratio(run.speedUp)}`,
+            `${row.name}, ${columns[c]}: forks ${seconds(run.seconds[0])}, this pool ${seconds(run.seconds[1])}, ${ratio(run.speedUp)}`,
         )
         .join('. '),
     )

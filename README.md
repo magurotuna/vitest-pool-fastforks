@@ -66,7 +66,7 @@ Seven open source projects, run with the `forks` pool and with this pool. Both p
 - Machine: a virtual machine with 16 vCPUs (AMD EPYC, no SMT) and 31 GiB of memory, Linux.
 - Software: Node.js v26.13.0. Vitest 5.1.0, except mui-x (5.0.5).
 - Method: the median wall time of 3 runs, in seconds.
-- Conditions: "16 vCPUs" uses Vitest's default number of workers. "4 vCPUs" limits the run to 4 CPUs, like a common CI runner.
+- Conditions: "16 vCPUs" uses all CPUs. "4 vCPUs" limits the run to 4 CPUs (`taskset -c 0-3`), like a common CI runner. Both use Vitest's default number of workers (15 and 3), except readest, whose config sets `maxWorkers: 4`.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/results-dark.svg">
