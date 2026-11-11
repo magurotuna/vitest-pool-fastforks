@@ -34,6 +34,18 @@ describe('splitNodeOptions', () => {
       'c\\d',
     ])
   })
+
+  test('removes double quotes inside an option, like Node.js', () => {
+    expect(splitNodeOptions('--import="./preload.mjs" --require="./a b.cjs"')).toEqual([
+      '--import=./preload.mjs',
+      '--require=./a b.cjs',
+    ])
+    expect(splitNodeOptions('--conditions=a""b ""')).toEqual(['--conditions=ab'])
+  })
+
+  test('keeps backslashes outside double quotes', () => {
+    expect(splitNodeOptions('--import=C:\\dir\\a.mjs')).toEqual(['--import=C:\\dir\\a.mjs'])
+  })
 })
 
 describe('importFlags', () => {

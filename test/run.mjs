@@ -12,13 +12,15 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 
-// name: [fixture directory, vitest arguments]
+// name: [fixture directory, vitest arguments, environment variables]
 const FIXTURES = {
   basic: ['basic', []],
   exit: ['exit', ['--maxWorkers=1']],
   'exit-parallel': ['exit', []],
   errors: ['errors', []],
   execargv: ['execargv', []],
+  // Node.js removes the double quotes, and keeps the space in the path.
+  'node-options': ['node-options', [], { NODE_OPTIONS: '--import="./setup file.mjs"' }],
   projects: ['projects', []],
   stdio: ['stdio', []],
   handles: ['handles', []],
@@ -43,7 +45,7 @@ const vitest = join(dirname(createRequire(import.meta.url).resolve('vitest/packa
 
 let failed = false
 for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
-  const [fixture, args] = FIXTURES[name]
+  const [fixture, args, env = {}] = FIXTURES[name]
   const dir = join(out, name)
   mkdirSync(dir, { recursive: true })
   const results = {}
@@ -64,7 +66,7 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
       ],
       {
         cwd: join(root, 'fixtures', fixture),
-        env: { ...process.env, POOL: pool, FASTFORKS_FALLBACK: process.env.FASTFORKS_FALLBACK ?? 'error' },
+        env: { ...process.env, ...env, POOL: pool, FASTFORKS_FALLBACK: process.env.FASTFORKS_FALLBACK ?? 'error' },
         encoding: 'utf8',
         timeout: 120_000,
       },

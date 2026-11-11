@@ -12,7 +12,14 @@ test('a request to a child process that closed its channel rejects', async () =>
   })
   try {
     await once(child, 'disconnect')
-    const host = new Host(child, 'key', { hosts: new Set(), idle: [], waiters: [], limit: 1, memoryLimit: 0 })
+    const host = new Host(child, 'key', {
+      hosts: new Set(),
+      idle: [],
+      waiters: [],
+      limit: 1,
+      memoryLimit: 0,
+      closed: false,
+    })
     await expect(host.request('free', 1, 'freed')).rejects.toMatchObject({ code: 'ERR_IPC_CHANNEL_CLOSED' })
   } finally {
     child.kill()

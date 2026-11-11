@@ -26,7 +26,9 @@ interface Registry {
   /** Calls waiting for a child process to become idle or to exit. */
   waiters: (() => void)[]
   limit: number
+  /** The default memory limit of a child process. */
   memoryLimit: number
+  closed: boolean
 }
 
 interface SharedState {
@@ -241,27 +243,53 @@ async function startHost(options: PoolOptions, context: PoolContext, key: string
 // before the previous one is stopped, and freeing an Environment takes time.
 // The default memory limit of a child process is the one that Vitest uses for
 // the workers of vmForks and vmThreads.
-function getRegistry(options: PoolOptions, context: PoolContext): Registry {
+function getRegistry(options: PoolOptions): Registry {
   const vitest = options.project.vitest
   let registry = registries.get(vitest)
   if (!registry) {
     const { maxWorkers, watch } = vitest.config
     const workers = Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : availableParallelism()
     const memory = (process.constrainedMemory?.() || totalmem()) / (watch ? 2 : 1)
-    registry = {
+    const created: Registry = {
       hosts: new Set(),
       idle: [],
       waiters: [],
       limit: 2 * workers,
-      memoryLimit: context.memoryLimit ?? memory / workers,
+      memoryLimit: memory / workers,
+      closed: false,
     }
-    registries.set(vitest, registry)
+    registries.set(vitest, created)
+    // A program can close Vitest and start it again in the same process.
+    vitest.onClose(() => closeRegistry(created))
+    registry = created
   }
   return registry
 }
 
+// Vitest calls this after it stopped every worker.
+async function closeRegistry(registry: Registry): Promise<void> {
+  registry.closed = true
+  const hosts = [...registry.hosts]
+  registry.hosts.clear()
+  registry.idle.length = 0
+  notifyWaiters(registry)
+  await Promise.all(
+    hosts.map(
+      (host) =>
+        new Promise<void>((resolve) => {
+          if (host.exited) return resolve()
+          host.events.once('exit', () => resolve())
+          // An idle child process does not keep the main process alive.
+          // Wait for its exit.
+          setRef(host.child, true)
+          host.child.kill()
+        }),
+    ),
+  )
+}
+
 async function acquireHost(options: PoolOptions, context: PoolContext, { reuse = true } = {}): Promise<Host> {
-  const registry = getRegistry(options, context)
+  const registry = getRegistry(options)
   const key = JSON.stringify([options.execArgv, options.env, needsInspector(options)])
   for (let waited = false; ; waited = true) {
     if (reuse) {
@@ -296,12 +324,12 @@ function notifyWaiters(registry: Registry): void {
   for (const waiter of registry.waiters.splice(0)) waiter()
 }
 
-function releaseHost(host: Host, rss: number): void {
+function releaseHost(host: Host, rss: number, memoryLimit: number | undefined): void {
   const { registry } = host
   // Memory that a test file allocated outside the JavaScript heap, or that
   // V8 does not give back, stays in the child process. Start a new one when
   // it gets large, as a fork would.
-  if (rss > registry.memoryLimit || registry.hosts.size > registry.limit) {
+  if (registry.closed || rss > (memoryLimit ?? registry.memoryLimit) || registry.hosts.size > registry.limit) {
     registry.hosts.delete(host)
     host.child.kill()
   } else {
@@ -361,7 +389,8 @@ export class FastForksPoolWorker implements PoolWorker {
       return
     }
     host.files++
-    releaseHost(host, freed.rss ?? 0)
+    // The limit of this file's project: projects can set different limits.
+    releaseHost(host, freed.rss ?? 0, this.context.memoryLimit)
   }
 
   send(message: WorkerRequest): void {

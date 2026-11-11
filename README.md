@@ -134,6 +134,7 @@ npm run check:cc      # Check the format of the addon with clang-format.
 npm run test:unit     # Unit tests with vp test.
 npm test              # Run each fixture with forks and with this pool, and compare.
 node test/watch.mjs   # Compare watch mode.
+node test/close.mjs   # Check that closing Vitest stops the child processes.
 ```
 
 The chart at the top of this README comes from `scripts/results-chart.ts`. After you change the numbers in it, run `node scripts/results-chart.ts`.
