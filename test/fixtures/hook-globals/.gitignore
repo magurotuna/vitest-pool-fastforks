@@ -1,0 +1,4 @@
+# The packages in node_modules are part of the fixture, but the cache that
+# Vitest writes there is not.
+!node_modules/
+node_modules/.vite/

@@ -25,6 +25,7 @@ const FIXTURES = {
   stdio: ['stdio', []],
   handles: ['handles', []],
   process: ['process', []],
+  'hook-globals': ['hook-globals', []],
   changing: ['changing', ['--maxWorkers=1']],
   'crash-on-create': ['crash-on-create', ['--maxWorkers=1']],
   'many-projects': ['many-projects', ['--maxWorkers=2']],
