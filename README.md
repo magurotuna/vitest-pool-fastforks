@@ -108,7 +108,10 @@ The speed-up is largest when a project has many small test files, because then t
 - **Coverage with the `v8` provider is not faster than `forks`.** The environments share compiled code, and coverage counts would be wrong, so the pool turns off the V8 compilation cache when the `v8` provider is on. The `istanbul` provider is not affected.
 - **Debugging** (`--inspect`, `--inspect-brk`) uses a new process for each test file, like `forks`, because an environment has no debugger connection.
 - **Few, long test files** gain little. In Instructure UI above (20 files), the run time is mostly the tests themselves.
-- **Native addons** that do not support more than one context in a process (addons that use `NODE_MODULE()` instead of [`NODE_MODULE_INIT()`](https://nodejs.org/api/addons.html#context-aware-addons)) may fail to load in the second test file of a child process.
+- **Native addons** can fail when a child process runs more than one test file. The `forks` pool starts a new process for each file, so it does not have these problems.
+  - An addon that does not support more than one context in a process (an addon that uses `NODE_MODULE()` instead of [`NODE_MODULE_INIT()`](https://nodejs.org/api/addons.html#context-aware-addons)) may fail to load in the second test file of a child process.
+  - An addon that does not clean up when its Node.js environment ends, as the [Node.js documentation](https://nodejs.org/api/addons.html#worker-support) describes, can cause a memory leak or a crash. The child process can keep the memory of each earlier test file (`re2` 1.27.0), or crash in a later test file (`isolated-vm` 7.0.1).
+  - If an addon causes one of these problems, run the test files that use it in a separate [project](https://vitest.dev/guide/projects) with `pool: 'forks'`. For a memory leak, a lower `memoryLimit` also helps.
 - The [`threads`](https://vitest.dev/config/pool#threads), [`vmThreads`](https://vitest.dev/config/pool#vmthreads), and [`vmForks`](https://vitest.dev/config/pool#vmforks) pools are not changed. This pool replaces only `forks`.
 
 ## Choosing a pool
@@ -120,6 +123,7 @@ The speed-up is largest when a project has many small test files, because then t
 - **The pool prints `Using the "forks" pool instead`.** The message tells you which requirement is missing. Use `fallback: 'error'` to make it an error, for example in CI.
 - **A test fails only with this pool.** Run it with the `forks` pool (`VITEST_POOL_FASTFORKS=0`) to confirm, and report it with the test and the error.
 - **`A child process exited ... Starting the file in a new child process.`** A child process stopped before a test file started (for example, it crashed because of an earlier file). The pool runs the file in a new child process, so the result is not lost.
+- **A test file fails with `Worker exited unexpectedly`, but passes with `forks`.** An earlier test file in the same child process may have caused the crash, for example through a native addon. See the native addons item in [Limitations](#limitations).
 
 ## Development
 
