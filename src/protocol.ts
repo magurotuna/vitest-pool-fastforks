@@ -70,8 +70,8 @@ export interface Addon {
   /** The global object of the Environment. */
   global(id: number): Record<string, unknown>
   /**
-   * Frees the Environment after this event loop iteration. Calls done after
-   * the Environment is freed.
+   * Frees the Environment after uv_run() returns, and then calls done. If id is
+   * not a live Environment, does nothing and does not call done.
    */
   free(id: number, done: () => void): void
 }

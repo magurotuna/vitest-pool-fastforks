@@ -125,7 +125,8 @@ function free(id: number): void {
     replyFreed(id)
     return
   }
-  // The addon frees the Environment after this event loop iteration.
+  // The Environment can run callbacks, and change the process state, until the
+  // addon frees it. So restore the process state and reply after the free.
   addon.free(s.sid, () => {
     restoreProcessState()
     replyFreed(id)
