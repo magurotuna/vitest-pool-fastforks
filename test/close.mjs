@@ -80,8 +80,9 @@ for (const memoryLimit of [undefined, 0]) {
   else process.env.NODE_OPTIONS = nodeOptions
 }
 
-// The child process exits on SIGTERM and writes its profile.
-{
+// The child process exits on SIGTERM and writes its profile. On Windows,
+// kill() ends a process without an exit.
+if (process.platform !== 'win32') {
   const dir = mkdtempSync(join(tmpdir(), 'fastforks-prof-')).replaceAll('\\', '/')
   process.env.NODE_OPTIONS = `${nodeOptions ?? ''} --cpu-prof --cpu-prof-dir="${dir}"`
   const vitest = await start('fast.test.ts')
@@ -92,4 +93,4 @@ for (const memoryLimit of [undefined, 0]) {
   if (readdirSync(dir).length === 0) fail('--cpu-prof: the child process wrote no profile')
 }
 
-console.log('same close (no child process left in 6 runs)')
+console.log('same close (no child process left after any run)')
