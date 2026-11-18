@@ -3,6 +3,8 @@
 //   Environment completes in the same batch of thread pool callbacks. When
 //   free() freed the Environment inside the callback, this check hung: the
 //   inner uv_run() did not see the completion of that request.
+// - A normal exit after free(). When the addon destroyed its v8::Global
+//   handles after Node.js disposed the isolate, this check crashed.
 //
 // Usage: node test/addon.mjs
 import { spawnSync } from 'node:child_process'
@@ -38,6 +40,16 @@ const CHECKS = {
     // both before the event loop polls, so that their callbacks come in one
     // batch.
     busyWait(100)
+  },
+  'a normal exit after free()'(addon) {
+    const guest = create(addon)
+    // Keep the context reachable, so that the addon still holds a handle to it
+    // at the exit.
+    globalThis.guest = guest
+    addon.free(guest.id, () => {
+      process.exitCode = 0
+    })
+    // The child process exits when the event loop has no more work.
   },
 }
 

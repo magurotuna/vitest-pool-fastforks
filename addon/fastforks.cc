@@ -116,8 +116,12 @@ void Global(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(node::GetMainContext(env)->Global());
 }
 
-// The contexts of freed Environments, until the GC collects them.
-std::vector<v8::Global<Context>> freed_contexts;
+// The contexts of freed Environments, until the GC collects them. Never
+// deleted: at a normal exit, Node.js disposes the isolate before C++ destroys
+// global objects, and a v8::Global must not be destroyed after its isolate is
+// disposed.
+std::vector<v8::Global<Context>>& freed_contexts =
+    *new std::vector<v8::Global<Context>>();
 
 // Tells V8 that the context goes away, as a browser does for a page. V8 then
 // drops the maps that it keeps alive for the context (without this, a normal
