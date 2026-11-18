@@ -104,8 +104,10 @@ jobs:
       matrix:
         include:
           - node: 24
+            reason: Node.js v26.11.0 or later is required
           - node: 26.13.0
             vitest: 4.0.9
+            reason: Vitest v4.0.10 or later is required
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -127,4 +129,6 @@ jobs:
       - run: npm test -- --out results basic exit
         env:
           FASTFORKS_FALLBACK: forks
-      - run: grep -q 'Using the "forks" pool instead' results/basic/fastforks.stderr
+      - run: grep -q "$REASON.*Using the \"forks\" pool instead" results/basic/fastforks.stderr
+        env:
+          REASON: ${{ matrix.reason }}
