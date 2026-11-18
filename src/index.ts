@@ -33,7 +33,8 @@ export interface FastForksOptions {
   /**
    * Create each test file's environment with a V8 inspector, so that tests
    * can use `node:inspector`. The pool always does this for coverage with the
-   * `v8` provider.
+   * `v8` provider. Like that coverage, it turns off the V8 compilation cache,
+   * so the run is slower.
    * @default false
    */
   inspector?: boolean

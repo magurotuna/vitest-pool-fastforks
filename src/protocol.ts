@@ -9,10 +9,8 @@ export interface HostOptions {
   forksUrl: string
   /** process.argv[1] of a fork. */
   argv1: string
-  /** Create the Environments with an inspector. */
+  /** Create the Environments with an inspector (for V8 coverage). */
   inspector: boolean
-  /** V8 coverage is on. */
-  v8Coverage: boolean
   /** Measurement only: a path prefix for the CPU time of the process. */
   cpu: string | undefined
 }
