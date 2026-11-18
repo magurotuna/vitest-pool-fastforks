@@ -69,5 +69,9 @@ export interface Addon {
   call(id: number, fn: (arg: unknown) => void, arg: unknown): unknown
   /** The global object of the Environment. */
   global(id: number): Record<string, unknown>
-  free(id: number): void
+  /**
+   * Frees the Environment after this event loop iteration. Calls done after
+   * the Environment is freed.
+   */
+  free(id: number, done: () => void): void
 }
