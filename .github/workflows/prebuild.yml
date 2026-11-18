@@ -212,7 +212,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
-            --jq 'map(select(.merged_at != null))[0].body // ""' > notes.md
+          # The pull request whose squash merge made the tagged commit.
+          sha=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_REF_NAME" --jq .sha)
+          SHA=$sha gh api "repos/$GITHUB_REPOSITORY/commits/$sha/pulls" \
+            --jq 'map(select(.merge_commit_sha == env.SHA))[0].body // ""' > notes.md
           if grep -q '[^[:space:]]' notes.md; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME" "${notes[@]}"

@@ -33,16 +33,23 @@ jobs:
       - name: Tag the version and start prebuild.yml
         env:
           GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
         run: |
           version=$(jq -r .version package.json)
           tag="v$version"
-          # npm stage publish makes the version "latest", so a prerelease
-          # version would become "latest" too.
-          case "$version" in *-*)
-            echo "$version is a prerelease version. Release it by hand."
+          # Release only from the push that changed the version. Another
+          # change to package.json must not tag a later commit.
+          before=$(gh api "repos/$GITHUB_REPOSITORY/contents/package.json?ref=$BEFORE" --jq .content | base64 -d | jq -r .version)
+          if [ "$version" = "$before" ]; then
+            echo "This push did not change the version, so there is nothing to release."
             exit 0
-            ;;
-          esac
+          fi
+          # npm stage publish needs --tag for a prerelease version, and the
+          # publish job does not pass one.
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "$version is not a stable version (X.Y.Z). Release it by hand."
+            exit 0
+          fi
           if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" > /dev/null 2>&1; then
             echo "The tag $tag exists, so there is nothing to release."
             exit 0
