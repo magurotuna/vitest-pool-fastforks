@@ -193,7 +193,7 @@ function needsInspector(options: PoolOptions): boolean {
 }
 
 // Like Vitest's forks pool: if a child process does not exit on SIGTERM, for
-// example because an 'exit' listener blocks, send SIGKILL.
+// example because a --require module ignores SIGTERM, send SIGKILL.
 const KILL_TIMEOUT = 500
 // If a child process does not free an Environment in this time, stop it.
 const FREE_TIMEOUT = 10_000

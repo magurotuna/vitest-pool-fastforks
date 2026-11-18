@@ -165,7 +165,12 @@ function withoutSnapshotBlob(args: string[]): string[] {
   return result
 }
 
-process.on('SIGTERM', () => process.exit(0))
+// Like Vitest's fork entry, exit on SIGTERM only with the flags that write a
+// file at exit, and for the CPU time measurement. Otherwise a SIGTERM that a
+// test sends to its own process would end this process.
+if (options.cpu || process.execArgv.some((arg) => /^--(prof|cpu-prof|heap-prof|diagnostic-dir)/.test(arg))) {
+  process.on('SIGTERM', () => process.exit(0))
+}
 // The main process exited without stopping this process.
 process.on('disconnect', () => process.exit(0))
 

@@ -70,11 +70,11 @@ for (let run = 1; run <= 2; run++) {
 const nodeOptions = process.env.NODE_OPTIONS
 for (const memoryLimit of [undefined, 0]) {
   // Only the child processes get the preload: this process already started.
-  const preload = join(root, 'blocking-exit.cjs').replaceAll('\\', '/')
+  const preload = join(root, 'ignore-sigterm.cjs').replaceAll('\\', '/')
   process.env.NODE_OPTIONS = `${nodeOptions ?? ''} --require="${preload}"`
   const vitest = await start('fast.test.ts', { memoryLimit })
   await vitest.start()
-  await close(vitest, memoryLimit === 0 ? 'blocked exit, after the memory limit' : 'blocked exit')
+  await close(vitest, memoryLimit === 0 ? 'SIGTERM ignored, after the memory limit' : 'SIGTERM ignored')
   if (nodeOptions === undefined) delete process.env.NODE_OPTIONS
   else process.env.NODE_OPTIONS = nodeOptions
 }
