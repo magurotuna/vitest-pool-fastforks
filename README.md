@@ -144,6 +144,15 @@ node test/addon.mjs   # Check the native addon without Vitest.
 
 The chart at the top of this README comes from `scripts/results-chart.ts`. After you change the numbers in it, run `node scripts/results-chart.ts`.
 
+### Releases
+
+1. Open a pull request that sets the version in `package.json` and `package-lock.json`. The body of the pull request becomes the release note, so write it for users.
+2. Merge the pull request. `release.yml` creates the tag, and `prebuild.yml` builds and tests the package on each platform and stages the version on npm.
+3. Approve the `publish` job on GitHub, and then approve the staged version on npmjs.com with 2FA.
+4. Publish the draft GitHub Release that the `release` job created.
+
+A `v*` tag cannot be deleted. If the release run fails because of a bug, fix the bug and release the next version. If the tag exists but no `prebuild.yml` run started, run `gh workflow run prebuild.yml --ref v<version> -f platforms=all`.
+
 ## License
 
 MIT
