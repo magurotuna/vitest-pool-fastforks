@@ -121,10 +121,19 @@ function free(id: number): void {
   freed++
   const s = environments.get(id)
   environments.delete(id)
-  if (s) {
-    addon.free(s.sid)
-    restoreProcessState()
+  if (!s) {
+    replyFreed(id)
+    return
   }
+  // The Environment can run callbacks, and change the process state, until the
+  // addon frees it. So restore the process state and reply after the free.
+  addon.free(s.sid, () => {
+    restoreProcessState()
+    replyFreed(id)
+  })
+}
+
+function replyFreed(id: number): void {
   if (contextsLog) {
     gc!()
     const heap = getHeapStatistics()

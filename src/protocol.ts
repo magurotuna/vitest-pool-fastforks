@@ -69,5 +69,9 @@ export interface Addon {
   call(id: number, fn: (arg: unknown) => void, arg: unknown): unknown
   /** The global object of the Environment. */
   global(id: number): Record<string, unknown>
-  free(id: number): void
+  /**
+   * Frees the Environment after uv_run() returns, and then calls done. If id is
+   * not a live Environment, does nothing and does not call done.
+   */
+  free(id: number, done: () => void): void
 }
