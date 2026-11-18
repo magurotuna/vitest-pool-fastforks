@@ -1,9 +1,10 @@
 // Runs inside each test file's Environment, loaded by the Environment's own
 // CommonJS loader (host.cts). Runs Vitest's fork entry and connects it to the
 // bridge that the host put on the global object.
+import { statSync } from 'node:fs'
 import { registerHooks } from 'node:module'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { TextDecoder } from 'node:util'
 import type { Bridge } from './protocol.ts'
 
@@ -31,16 +32,31 @@ const decode = uncurryThis(TextDecoder.prototype.decode)
 const decoder = new TextDecoder()
 const { stringify } = JSON
 const clone = structuredClone
+const stat = statSync
+const toPath = fileURLToPath
+const { now } = Date
 /* oxlint-enable typescript/unbound-method */
 
 // Every Environment starts with empty module caches, so Node.js would resolve
 // and read the same files again for each test file. The host keeps one cache
 // for all Environments: resolved URLs, and the sources of ES modules and
 // CommonJS modules (when a load hook returns the source, the CommonJS loader
-// does not read the file). The cache never sees file changes, so it keeps
-// only files in node_modules: a test can write a file and require it, and a
-// linked package can be rebuilt between runs in watch mode.
+// does not read the file). The cache keeps only files in node_modules: a test
+// can write a file and require it, and a linked package can be rebuilt
+// between runs in watch mode.
 const cache = bridge.moduleCache
+// A file in node_modules can change too, so a source is used only while the
+// file has the same change time, size, and inode. A file that changed in the
+// last 2 seconds is not kept: it can change again within one tick of the file
+// system clock and keep the same identity.
+const identify = (url: string): string | undefined => {
+  try {
+    const s = stat(toPath(url))
+    return now() - s.ctimeMs < 2000 ? undefined : `${s.ctimeMs}:${s.size}:${s.ino}`
+  } catch {
+    return undefined
+  }
+}
 const inNodeModules = (url: string | undefined): boolean =>
   url !== undefined && startsWith(url, 'file:') && includes(url, '/node_modules/')
 registerHooks({
@@ -57,16 +73,19 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (!inNodeModules(url)) return nextLoad(url, context)
+    const id = identify(url)
     const hit = cache.getLoaded(url)
-    if (hit !== undefined) return { format: hit.format, source: hit.source, shortCircuit: true }
+    if (hit !== undefined && id !== undefined && hit.id === id) {
+      return { format: hit.format, source: hit.source, shortCircuit: true }
+    }
     const result = nextLoad(url, context)
     // A .js file without a "type" in its package.json has no format yet, and
     // the CommonJS loader handles JSON itself; neither is cached.
     const format = result.format
-    if ((format === 'module' || format === 'commonjs') && result.source != null) {
+    if (id !== undefined && (format === 'module' || format === 'commonjs') && result.source != null) {
       // A string, not this realm's Buffer.
       const source = typeof result.source === 'string' ? result.source : decode(decoder, result.source as Uint8Array)
-      cache.setLoaded(url, format, source)
+      cache.setLoaded(url, format, source, id)
     }
     return result
   },

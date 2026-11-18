@@ -56,7 +56,7 @@ const moduleCache: Bridge['moduleCache'] = {
   getResolved: (key) => resolved.get(key),
   setResolved: (key, url, format) => void resolved.set(key, { url, format }),
   getLoaded: (url) => loaded.get(url),
-  setLoaded: (url, format, source) => void loaded.set(url, { format, source }),
+  setLoaded: (url, format, source, id) => void loaded.set(url, { format, source, id }),
 }
 
 const entry = join(__dirname, 'entry.cjs')

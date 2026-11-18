@@ -39,6 +39,8 @@ export interface ResolvedModule {
 export interface LoadedModule {
   format: string
   source: string
+  /** The change time, size, and inode of the file. */
+  id: string
 }
 
 /** The modules that all Environments of a child process share. */
@@ -46,7 +48,7 @@ export interface ModuleCache {
   getResolved(key: string): ResolvedModule | undefined
   setResolved(key: string, url: string, format: string | null | undefined): void
   getLoaded(url: string): LoadedModule | undefined
-  setLoaded(url: string, format: string, source: string): void
+  setLoaded(url: string, format: string, source: string, id: string): void
 }
 
 /** What the child process puts on the global object of an Environment. */

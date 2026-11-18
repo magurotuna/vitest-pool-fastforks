@@ -101,7 +101,7 @@ The speed-up is largest when a project has many small test files, because then t
 - Modules that you load with `--require` or `--import` in `execArgv` also run once when a child process starts, before its first test file.
 - `--cpu-prof` and `--heap-prof` write one profile per child process, not one per test file.
 - The test files in a child process share its memory, its garbage collection, `process.uptime()`, and the V8 flags that a test sets with `v8.setFlagsFromString()`.
-- For the files in `node_modules` that Node.js loads (not the files that Vite transforms), the pool keeps the source in memory for all test files in a child process. If a test changes a file in `node_modules` and loads it again, it gets the earlier content.
+- For the modules in `node_modules` that Node.js loads (not the files that Vite transforms), the pool keeps their source and the resolved paths of their imports in memory for all test files in a child process. If a file changes, the pool reads it again. If a test changes a `package.json` file in `node_modules`, an import in such a module can still resolve to the earlier file.
 
 ## Limitations
 
