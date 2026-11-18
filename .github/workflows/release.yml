@@ -3,7 +3,7 @@ name: release
 # Starts a release when a commit on main changes the version in
 # package.json: creates the tag v<version>, and then runs prebuild.yml on
 # the tag. prebuild.yml builds and tests the package, stages the version
-# on npm, and creates the GitHub Release. The body of the pull request
+# on npm, and creates a draft GitHub Release. The body of the pull request
 # that changed the version is the release note.
 #
 # The tag comes before the build, because the npm environment deploys only

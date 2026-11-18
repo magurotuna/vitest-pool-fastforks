@@ -198,9 +198,11 @@ jobs:
           fi
       - run: npm stage publish --access public vitest-pool-fastforks-*.tgz
 
-  # Creates the GitHub Release of the tag after the publish job staged the
-  # version. The release note is the body of the pull request that the tagged
-  # commit came from, or generated notes if there is no such pull request.
+  # Creates a draft GitHub Release of the tag after the publish job staged the
+  # version. A maintainer publishes the draft after approving the version on
+  # npm, so the release never shows a version that users cannot install. The
+  # release note is the body of the pull request that the tagged commit came
+  # from, or generated notes if there is no such pull request.
   release:
     needs: publish
     runs-on: ubuntu-24.04
@@ -208,7 +210,7 @@ jobs:
       contents: write # gh release create
       pull-requests: read # the body of the pull request
     steps:
-      - name: Create the GitHub Release
+      - name: Create a draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -217,4 +219,4 @@ jobs:
           SHA=$sha gh api "repos/$GITHUB_REPOSITORY/commits/$sha/pulls" \
             --jq 'map(select(.merge_commit_sha == env.SHA))[0].body // ""' > notes.md
           if grep -q '[^[:space:]]' notes.md; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
-          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME" "${notes[@]}"
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME" --draft "${notes[@]}"
