@@ -1,0 +1,55 @@
+name: release
+
+# Starts a release when a commit on main changes the version in
+# package.json: creates the tag v<version>, and then runs prebuild.yml on
+# the tag. prebuild.yml builds and tests the package, stages the version
+# on npm, and creates the GitHub Release. The body of the pull request
+# that changed the version is the release note.
+#
+# The tag comes before the build, because the npm environment deploys only
+# from v* tags. The "Release tags" ruleset blocks deleting a v* tag. So if
+# the run fails because of a bug, fix it and release the next version. If
+# it fails for another reason, run the failed jobs again. If the tag exists
+# but prebuild.yml did not start, run:
+#   gh workflow run prebuild.yml --ref v<version> -f platforms=all
+on:
+  push:
+    branches: [main]
+    paths: [package.json]
+
+permissions:
+  contents: read
+
+jobs:
+  tag:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # create the tag
+      actions: write # start prebuild.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Tag the version and start prebuild.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version package.json)
+          tag="v$version"
+          # npm stage publish makes the version "latest", so a prerelease
+          # version would become "latest" too.
+          case "$version" in *-*)
+            echo "$version is a prerelease version. Release it by hand."
+            exit 0
+            ;;
+          esac
+          if gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" > /dev/null 2>&1; then
+            echo "The tag $tag exists, so there is nothing to release."
+            exit 0
+          fi
+          object=$(gh api "repos/$GITHUB_REPOSITORY/git/tags" -f tag="$tag" -f message="$tag" -f object="$GITHUB_SHA" -f type=commit --jq .sha)
+          gh api "repos/$GITHUB_REPOSITORY/git/refs" -f ref="refs/tags/$tag" -f sha="$object" > /dev/null
+          # A tag that GITHUB_TOKEN pushes does not start workflows, but
+          # workflow_dispatch does.
+          gh workflow run prebuild.yml --repo "$GITHUB_REPOSITORY" --ref "$tag" -f platforms=all
+          echo "Created $tag and started prebuild.yml on it."

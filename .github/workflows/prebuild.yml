@@ -3,7 +3,8 @@ name: prebuild
 # Builds the native addon on each platform, runs the fixture comparisons with
 # the prebuilt addon, and packs the package with every prebuilt addon.
 # Each run uses Actions minutes (macOS counts 10 times, Windows 2 times), so
-# it runs only by hand or for a version tag.
+# it runs only by hand or for a version tag. release.yml starts it on the tag
+# of a new version.
 on:
   workflow_dispatch:
     inputs:
@@ -196,3 +197,22 @@ jobs:
             exit 1
           fi
       - run: npm stage publish --access public vitest-pool-fastforks-*.tgz
+
+  # Creates the GitHub Release of the tag after the publish job staged the
+  # version. The release note is the body of the pull request that the tagged
+  # commit came from, or generated notes if there is no such pull request.
+  release:
+    needs: publish
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write # gh release create
+      pull-requests: read # the body of the pull request
+    steps:
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" \
+            --jq 'map(select(.merged_at != null))[0].body // ""' > notes.md
+          if grep -q '[^[:space:]]' notes.md; then notes=(--notes-file notes.md); else notes=(--generate-notes); fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag --title "$GITHUB_REF_NAME" "${notes[@]}"
