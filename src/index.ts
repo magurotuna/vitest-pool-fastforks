@@ -30,6 +30,13 @@ export interface FastForksOptions {
    * number of workers, as Vitest's `vmMemoryLimit`
    */
   memoryLimit?: number | string
+  /**
+   * Create each test file's environment with a V8 inspector, so that tests
+   * can use `node:inspector`. The pool always does this for coverage with the
+   * `v8` provider.
+   * @default false
+   */
+  inspector?: boolean
 }
 
 const require = createRequire(import.meta.url)
@@ -63,6 +70,7 @@ export function fastForks(options: FastForksOptions = {}): PoolRunnerInitializer
     addon: support.addon,
     snapshot: options.snapshot ?? true,
     memoryLimit: parseMemoryLimit(options.memoryLimit),
+    inspector: options.inspector ?? false,
   }
   return {
     name: 'fastforks',

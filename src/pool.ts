@@ -17,6 +17,7 @@ export interface PoolContext {
   addon: string
   snapshot: boolean
   memoryLimit: number | undefined
+  inspector: boolean
 }
 
 interface Registry {
@@ -126,7 +127,8 @@ function spawnHost(
     addon: context.addon,
     forksUrl: pathToFileURL(resolve(options.distPath, 'workers/forks.js')).href,
     argv1: resolve(options.distPath, 'workers/forks.js'),
-    inspector: needsInspector(options),
+    inspector: needsInspector(options, context),
+    v8Coverage: usesV8Coverage(options),
     cpu: process.env.VITEST_POOL_FASTFORKS_CPU,
   }
   const child = fork(hostScript, [], {
@@ -183,11 +185,16 @@ function spawnHost(
 }
 
 // The V8 coverage provider reads coverage through node:inspector in each
-// test file's Environment. Like Vitest, treat every provider other than
-// istanbul as one that may need it.
-function needsInspector(options: PoolOptions): boolean {
+// test file's Environment.
+function needsInspector(options: PoolOptions, context: PoolContext): boolean {
   const forced = process.env.VITEST_POOL_FASTFORKS_INSPECTOR
   if (forced) return forced === '1'
+  return context.inspector || usesV8Coverage(options)
+}
+
+// Like Vitest, treat every provider other than istanbul as one that may use
+// V8 coverage.
+function usesV8Coverage(options: PoolOptions): boolean {
   const coverage = options.project.vitest.config.coverage
   return Boolean(coverage?.enabled && coverage.provider !== 'istanbul')
 }
@@ -308,7 +315,7 @@ async function closeRegistry(registry: Registry): Promise<void> {
 
 async function acquireHost(options: PoolOptions, context: PoolContext, { reuse = true } = {}): Promise<Host> {
   const registry = getRegistry(options)
-  const key = JSON.stringify([options.execArgv, options.env, needsInspector(options)])
+  const key = JSON.stringify([options.execArgv, options.env, needsInspector(options, context), usesV8Coverage(options)])
   for (let waited = false; ; waited = true) {
     // closeRegistry() does not wait for a child process that starts after it.
     if (registry.closed) throw new Error('[vitest-pool-fastforks] Vitest is closing')
