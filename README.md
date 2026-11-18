@@ -90,7 +90,7 @@ The speed-up is largest when a project has many small test files, because then t
 
 - Each test file gets new globals, a new module graph, and a new `process` object.
 - Changes to `process.env`, the working directory, and the umask do not leak into the next test file.
-- `process.exit()` in a test, a crash of the process, and unhandled errors are reported the same way.
+- `process.exit()` in a test, a crash of the process, and unhandled errors during a test file are reported the same way.
 - `process.argv`, `process.execArgv`, `process.send`, and `worker_threads.isMainThread` and `threadId` have the same values.
 - [`execArgv`](https://vitest.dev/config/execargv) (including `--require` and `--import`), `env`, and the other per-project options.
 - Watch mode, and [coverage](https://vitest.dev/guide/coverage) with the `v8` and `istanbul` providers (the same coverage data).
@@ -101,6 +101,9 @@ The speed-up is largest when a project has many small test files, because then t
 - Modules that you load with `--require` or `--import` in `execArgv` also run once when a child process starts, before its first test file.
 - `--cpu-prof` and `--heap-prof` write one profile per child process, not one per test file.
 - The test files in a child process share its memory, its garbage collection, `process.uptime()`, and the V8 flags that a test sets with `v8.setFlagsFromString()`.
+- Timing can differ from `forks`. A garbage collection can come at another point in a test file. When a child process has more than 16 MiB of executable memory, V8 compiles new regular expressions with fewer optimizations, so a long match can take several times longer. A test that waits a fixed time or compares two timings can fail with this pool.
+- `exit` and `beforeExit` listeners of a test file do not run when the file ends. With `forks`, they run only if the process ends before Vitest stops it, so do not depend on them with either pool.
+- A timer that a test file leaves behind can throw an error after the file ends. Vitest reports the error only if it arrives before Vitest handles the end of the file. This is a race with both pools, and in large runs this pool reports fewer of these errors than `forks`. To find these timers, run Vitest with `--detectAsyncLeaks`.
 - For the files in `node_modules` that Node.js loads (not the files that Vite transforms), the pool keeps the source in memory for all test files in a child process. If a test changes a file in `node_modules` and loads it again, it gets the earlier content.
 
 ## Limitations
