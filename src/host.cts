@@ -5,6 +5,7 @@ import { appendFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { getHeapStatistics, setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'
+import { splitNodeOptions } from './node-options.ts'
 import type {
   Addon,
   Bridge,
@@ -30,9 +31,9 @@ delete process.env.VITEST_POOL_FASTFORKS_HOST
 const addon: Addon = require(options.addon)
 
 // EnvironmentFlags: kOwnsProcessState, and kNoCreateInspector unless the
-// tests need node:inspector (V8 coverage). Without kOwnsProcessState,
-// process.chdir() in a test fails a CHECK and aborts this process, because
-// the restored context keeps the main thread's methods.
+// tests need node:inspector (V8 coverage, or the inspector option). Without
+// kOwnsProcessState, process.chdir() in a test fails a CHECK and aborts this
+// process, because the restored context keeps the main thread's methods.
 const FLAGS = (1 << 1) | (options.inspector ? 0 : 1 << 9)
 if (options.inspector) {
   // V8 shares compiled functions between the Environments through its
@@ -165,7 +166,18 @@ function withoutSnapshotBlob(args: string[]): string[] {
   return result
 }
 
-process.on('SIGTERM', () => process.exit(0))
+// Exit on SIGTERM only if something writes a file at exit: the flags that
+// Vitest's fork entry checks (here also from NODE_OPTIONS), V8 coverage, and
+// the CPU time measurement. Otherwise a SIGTERM that a test sends to its own
+// process would end this process.
+const flags = [...splitNodeOptions(process.env.NODE_OPTIONS ?? ''), ...process.execArgv]
+if (
+  options.cpu ||
+  process.env.NODE_V8_COVERAGE ||
+  flags.some((arg) => /^--(prof|cpu-prof|heap-prof|diagnostic-dir)/.test(arg))
+) {
+  process.on('SIGTERM', () => process.exit(0))
+}
 // The main process exited without stopping this process.
 process.on('disconnect', () => process.exit(0))
 
