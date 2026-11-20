@@ -70,8 +70,10 @@ To use the `forks` pool without changing the config, set the environment variabl
 
 Seven open source projects and one synthetic suite, run with the `forks` pool and with this pool. Both pools gave the same test results. The only differences were tests that are flaky with both pools, and two tests in Vitest's own suite that run only when the pool is named `forks`.
 
+<!-- results:start -->
+
 - Machine: a virtual machine with 16 vCPUs (AMD EPYC, no SMT) and 31 GiB of memory, Linux.
-- Software: Node.js v26.13.0. Vitest 5.1.0, except mui-x (5.0.5).
+- Software: Node.js v26.13.0 and Vitest 5.1.0 (MUI X: 5.0.5).
 - Method: the median wall time of 3 runs, in seconds.
 - Conditions: "16 vCPUs" uses all CPUs. "4 vCPUs" limits the run to 4 CPUs (`taskset -c 0-3`), like a common CI runner. Both use Vitest's default number of workers (15 and 3), except readest, whose config sets `maxWorkers: 4`.
 
@@ -85,6 +87,8 @@ Seven open source projects and one synthetic suite, run with the `forks` pool an
 | [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`)                                                   |        217 |                   6.6 → 5.6 |    1.18× |                23.1 → 13.7 |    1.69× |
 | [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests)                                   |         20 |                   4.6 → 4.4 |    1.04× |                  3.8 → 4.0 |    0.96× |
 | [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition) (synthetic) |        500 |                 29.1 → 11.1 |    2.62× |               109.3 → 31.9 |    3.43× |
+
+<!-- results:end -->
 
 The speed-up is largest when a project has many small test files, because then the start of each file takes most of the time. The synthetic suite is an example: [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition) (commit `fb868f3`) generates 500 test files with 10 tests each in `fixture/tests/nomock/`, and they run with [happy-dom](https://github.com/capricorn86/happy-dom).
 
@@ -148,11 +152,18 @@ node test/close.mjs   # Check that closing Vitest stops the child processes.
 node test/addon.mjs   # Check the native addon without Vitest.
 ```
 
-The chart at the top of this README comes from `scripts/results-chart.ts`. After you change the numbers in it, run `node scripts/results-chart.ts`.
+### Benchmark
+
+The numbers in [Results](#results) come from `bench/`. It needs a Debian machine with 16 CPUs, 32 GiB of memory, and 100 GB of disk, with nothing else running. Everything goes to `/data/fastforks` (set `BENCH` to change it).
+
+1. Clone this repository on the machine, and check out the commit to measure.
+2. Run `bash bench/setup.sh`. It installs Node.js, builds this package, and sets up each project at a fixed commit.
+3. Run `bash bench/bench.sh`. It takes about 6 hours, and writes `/data/fastforks/raw/<time>/results.json`. It prints a warning if a file fails with only one pool.
+4. Copy `results.json` to `docs/results.json` in your checkout. Then run `npx vp fmt docs/results.json` and `node scripts/results-chart.ts`. The script writes the chart and the numbers in the Results section.
 
 ### Releases
 
-1. Open a pull request that sets the version in `package.json` and `package-lock.json`. The body of the pull request becomes the release note, so write it for users.
+1. Open a pull request that sets the version in `package.json` and `package-lock.json`, and that updates the results ([Benchmark](#benchmark)). The body of the pull request becomes the release note, so write it for users.
 2. Merge the pull request. `release.yml` creates the tag, and `prebuild.yml` builds and tests the package on each platform and stages the version on npm.
 3. Approve the `publish` job on GitHub, and then approve the staged version on npmjs.com with 2FA.
 4. Publish the draft GitHub Release that the `release` job created.

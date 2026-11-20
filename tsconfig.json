@@ -13,5 +13,5 @@
     "isolatedDeclarations": true,
     "skipLibCheck": true
   },
-  "include": ["src", "scripts", "test/unit", "vite.config.ts"]
+  "include": ["src", "scripts", "bench", "test/unit", "vite.config.ts"]
 }
