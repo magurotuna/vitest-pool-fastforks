@@ -53,6 +53,7 @@ fastForks({
   fallback: 'forks',
   snapshot: true,
   memoryLimit: '10%',
+  inspector: false,
 })
 ```
 
@@ -61,6 +62,7 @@ fastForks({
 | `fallback`    | `'forks'`                                                                                                                                                      | What to do when this pool cannot run (see [Requirements](#requirements)). `'forks'` prints a warning and uses the `forks` pool. `'error'` throws an error.                                                                                                                                          |
 | `snapshot`    | `true`                                                                                                                                                         | Start the child processes from a [startup snapshot](https://nodejs.org/api/v8.html#startup-snapshot-api) that has the Node.js built-in modules that Vitest uses. The pool builds the snapshot on the first run (about 0.4 seconds) and keeps it in the temporary directory of the operating system. |
 | `memoryLimit` | The memory of the system (half of it in watch mode) divided by the number of workers, like Vitest's [`vmMemoryLimit`](https://vitest.dev/config/vmmemorylimit) | When a child process uses more memory (RSS) than this after a test file, the pool stops it and starts a new one. Bytes, or a percentage of the memory of the system, such as `'10%'`.                                                                                                               |
+| `inspector`   | `false`                                                                                                                                                        | Create each test file's environment with a V8 inspector, so that tests can use [`node:inspector`](https://nodejs.org/api/inspector.html). Like coverage with the `v8` provider, which always turns it on, this turns off the V8 compilation cache, so the run is slower.                            |
 
 To use the `forks` pool without changing the config, set the environment variable `VITEST_POOL_FASTFORKS=0`.
 
@@ -121,6 +123,7 @@ The speed-up is largest when a project has many small test files, because then t
 ## Troubleshooting
 
 - **The pool prints `Using the "forks" pool instead`.** The message tells you which requirement is missing. Use `fallback: 'error'` to make it an error, for example in CI.
+- **A test that uses `node:inspector` fails.** The error is `This Environment was initialized without a V8::Inspector`, or a library catches that error and returns an empty result. Set `inspector: true`. The inspector then also reports the scripts of the earlier test files in the child process.
 - **A test fails only with this pool.** Run it with the `forks` pool (`VITEST_POOL_FASTFORKS=0`) to confirm, and report it with the test and the error.
 - **`A child process exited ... Starting the file in a new child process.`** A child process stopped before a test file started (for example, it crashed because of an earlier file). The pool runs the file in a new child process, so the result is not lost.
 - **A test file fails with `Worker exited unexpectedly`, but passes with `forks`.** An earlier test file in the same child process may have caused the crash, for example through a native addon. See the native addons item in [Limitations](#limitations).

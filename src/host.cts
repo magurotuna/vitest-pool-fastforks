@@ -31,9 +31,9 @@ delete process.env.VITEST_POOL_FASTFORKS_HOST
 const addon: Addon = require(options.addon)
 
 // EnvironmentFlags: kOwnsProcessState, and kNoCreateInspector unless the
-// tests need node:inspector (V8 coverage). Without kOwnsProcessState,
-// process.chdir() in a test fails a CHECK and aborts this process, because
-// the restored context keeps the main thread's methods.
+// tests need node:inspector (V8 coverage, or the inspector option). Without
+// kOwnsProcessState, process.chdir() in a test fails a CHECK and aborts this
+// process, because the restored context keeps the main thread's methods.
 const FLAGS = (1 << 1) | (options.inspector ? 0 : 1 << 9)
 if (options.inspector) {
   // V8 shares compiled functions between the Environments through its
