@@ -19,7 +19,7 @@ A new environment is faster to create than a new process, and the process keeps 
 ## Requirements
 
 - Node.js `^26.11.0` (v26.11.0 or later, but less than v27). Earlier versions cannot run more than one environment in a process ([nodejs/node#65977](https://github.com/nodejs/node/pull/65977), [nodejs/node#66239](https://github.com/nodejs/node/pull/66239)). The prebuilt addons are only for Node.js 26.
-- Vitest 4.0 or later, before 6.0.
+- Vitest 4.0.10 or later, before 6.0.
 - A prebuilt [native addon](https://nodejs.org/api/addons.html) for your platform: Linux (x64 and arm64, glibc and musl), macOS (arm64 and x64), and Windows (x64).
 
 If one of these is missing, the pool prints a warning and uses Vitest's `forks` pool instead, so your tests still run.
@@ -53,6 +53,7 @@ fastForks({
   fallback: 'forks',
   snapshot: true,
   memoryLimit: '10%',
+  inspector: false,
 })
 ```
 
@@ -61,6 +62,7 @@ fastForks({
 | `fallback`    | `'forks'`                                                                                                                                                      | What to do when this pool cannot run (see [Requirements](#requirements)). `'forks'` prints a warning and uses the `forks` pool. `'error'` throws an error.                                                                                                                                          |
 | `snapshot`    | `true`                                                                                                                                                         | Start the child processes from a [startup snapshot](https://nodejs.org/api/v8.html#startup-snapshot-api) that has the Node.js built-in modules that Vitest uses. The pool builds the snapshot on the first run (about 0.4 seconds) and keeps it in the temporary directory of the operating system. |
 | `memoryLimit` | The memory of the system (half of it in watch mode) divided by the number of workers, like Vitest's [`vmMemoryLimit`](https://vitest.dev/config/vmmemorylimit) | When a child process uses more memory (RSS) than this after a test file, the pool stops it and starts a new one. Bytes, or a percentage of the memory of the system, such as `'10%'`.                                                                                                               |
+| `inspector`   | `false`                                                                                                                                                        | Create each test file's environment with a V8 inspector, so that tests can use [`node:inspector`](https://nodejs.org/api/inspector.html). Like coverage with the `v8` provider, which always turns it on, this turns off the V8 compilation cache, so the run is slower.                            |
 
 To use the `forks` pool without changing the config, set the environment variable `VITEST_POOL_FASTFORKS=0`.
 
@@ -90,7 +92,7 @@ The speed-up is largest when a project has many small test files, because then t
 
 - Each test file gets new globals, a new module graph, and a new `process` object.
 - Changes to `process.env`, the working directory, and the umask do not leak into the next test file.
-- `process.exit()` in a test, a crash of the process, and unhandled errors are reported the same way.
+- `process.exit()` in a test, a crash of the process, and unhandled errors during a test file are reported the same way.
 - `process.argv`, `process.execArgv`, `process.send`, and `worker_threads.isMainThread` and `threadId` have the same values.
 - [`execArgv`](https://vitest.dev/config/execargv) (including `--require` and `--import`), `env`, and the other per-project options.
 - Watch mode, and [coverage](https://vitest.dev/guide/coverage) with the `v8` and `istanbul` providers (the same coverage data).
@@ -101,6 +103,9 @@ The speed-up is largest when a project has many small test files, because then t
 - Modules that you load with `--require` or `--import` in `execArgv` also run once when a child process starts, before its first test file.
 - `--cpu-prof` and `--heap-prof` write one profile per child process, not one per test file.
 - The test files in a child process share its memory, its garbage collection, `process.uptime()`, and the V8 flags that a test sets with `v8.setFlagsFromString()`.
+- Timing can differ from `forks`. A garbage collection can come at another point in a test file. A child process keeps the compiled code of earlier test files, so it can hold more than 16 MiB of executable memory. V8 can then compile new regular expressions with fewer optimizations, and a long match can take several times longer. A test that waits a fixed time or compares two timings can fail with this pool. Make such a test wait for the result, or run it in a separate [project](https://vitest.dev/guide/projects) with `pool: 'forks'`.
+- The `exit` and `beforeExit` listeners of a test file do not run. With `forks`, they run only if the process ends before Vitest stops it. So an error in such a listener can fail some runs with `forks`, but no run with this pool. For cleanup, use `afterAll`.
+- A timer that a test file leaves behind can throw an error after the file ends. Vitest reports the error only until it stops listening to the file. Both pools can miss these errors, and this pool can miss more of them than `forks`. To find these timers, run Vitest 4.1 or later with `--detectAsyncLeaks`.
 - For the files in `node_modules` that Node.js loads (not the files that Vite transforms), the pool keeps the source in memory for all test files in a child process. If a test changes a file in `node_modules` and loads it again, it gets the earlier content.
 
 ## Limitations
@@ -121,6 +126,7 @@ The speed-up is largest when a project has many small test files, because then t
 ## Troubleshooting
 
 - **The pool prints `Using the "forks" pool instead`.** The message tells you which requirement is missing. Use `fallback: 'error'` to make it an error, for example in CI.
+- **A test that uses `node:inspector` fails.** The error is `This Environment was initialized without a V8::Inspector`, or a library catches that error and returns an empty result. Set `inspector: true`. The inspector then also reports the scripts of the earlier test files in the child process.
 - **A test fails only with this pool.** Run it with the `forks` pool (`VITEST_POOL_FASTFORKS=0`) to confirm, and report it with the test and the error.
 - **`A child process exited ... Starting the file in a new child process.`** A child process stopped before a test file started (for example, it crashed because of an earlier file). The pool runs the file in a new child process, so the result is not lost.
 - **A test file fails with `Worker exited unexpectedly`, but passes with `forks`.** An earlier test file in the same child process may have caused the crash, for example through a native addon. See the native addons item in [Limitations](#limitations).

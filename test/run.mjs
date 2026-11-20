@@ -32,6 +32,7 @@ const FIXTURES = {
   'many-projects': ['many-projects', ['--maxWorkers=2']],
   'separate-configs': ['separate-configs', ['--maxWorkers=2']],
   inspect: ['inspect', ['--inspect=127.0.0.1:9339', '--no-file-parallelism']],
+  inspector: ['inspector', ['--maxWorkers=1']],
   'coverage-v8': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=v8']],
   'coverage-istanbul': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=istanbul']],
 }

@@ -70,7 +70,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        vitest: [4.0.15, 5.0.5]
+        vitest: [4.0.10, 4.0.15, 5.0.5]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -95,9 +95,19 @@ jobs:
       - run: node test/watch.mjs
       - run: node test/close.mjs
 
-  # On a Node.js that is too old, the pool prints a warning and uses forks.
+  # On a Node.js or a Vitest that is too old, the pool prints a warning and
+  # uses forks.
   fallback:
     if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - node: 24
+            reason: Node.js v26.11.0 or later is required
+          - node: 26.13.0
+            vitest: 4.0.9
+            reason: Vitest v4.0.10 or later is required
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -105,10 +115,20 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
       - run: npm ci
       - run: npm run build:js
-      - run: npm test -- --out results basic exit
+      # Build the addon too, so that only the Vitest version is too old.
+      - if: matrix.vitest
+        run: | # zizmor: ignore[adhoc-packages]
+          vite=$(node -p "require('./node_modules/vite/package.json').version")
+          npm install --no-save --legacy-peer-deps "vitest@$VERSION" "@vitest/coverage-v8@$VERSION" "@vitest/coverage-istanbul@$VERSION" "vite@$vite"
+          npm run build
+        env:
+          VERSION: ${{ matrix.vitest }}
+      - run: npm test -- --out results basic exit-parallel
         env:
           FASTFORKS_FALLBACK: forks
-      - run: grep -q 'Using the "forks" pool instead' results/basic/fastforks.stderr
+      - run: grep -q "$REASON.*Using the \"forks\" pool instead" results/basic/fastforks.stderr
+        env:
+          REASON: ${{ matrix.reason }}

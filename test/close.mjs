@@ -4,9 +4,10 @@
 // - while a test file runs
 // - when a child process does not exit on SIGTERM, also after the memory
 //   limit stopped it
+// - with --cpu-prof, the child process writes its profile
 //
 // Usage: node test/close.mjs
-import { existsSync, mkdtempSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -70,13 +71,26 @@ for (let run = 1; run <= 2; run++) {
 const nodeOptions = process.env.NODE_OPTIONS
 for (const memoryLimit of [undefined, 0]) {
   // Only the child processes get the preload: this process already started.
-  const preload = join(root, 'blocking-exit.cjs').replaceAll('\\', '/')
+  const preload = join(root, 'ignore-sigterm.cjs').replaceAll('\\', '/')
   process.env.NODE_OPTIONS = `${nodeOptions ?? ''} --require="${preload}"`
   const vitest = await start('fast.test.ts', { memoryLimit })
   await vitest.start()
-  await close(vitest, memoryLimit === 0 ? 'blocked exit, after the memory limit' : 'blocked exit')
+  await close(vitest, memoryLimit === 0 ? 'SIGTERM ignored, after the memory limit' : 'SIGTERM ignored')
   if (nodeOptions === undefined) delete process.env.NODE_OPTIONS
   else process.env.NODE_OPTIONS = nodeOptions
 }
 
-console.log('same close (no child process left in 5 runs)')
+// The child process exits on SIGTERM and writes its profile. On Windows,
+// kill() ends a process without an exit.
+if (process.platform !== 'win32') {
+  const dir = mkdtempSync(join(tmpdir(), 'fastforks-prof-')).replaceAll('\\', '/')
+  process.env.NODE_OPTIONS = `${nodeOptions ?? ''} --cpu-prof --cpu-prof-dir="${dir}"`
+  const vitest = await start('fast.test.ts')
+  await vitest.start()
+  await close(vitest, '--cpu-prof')
+  if (nodeOptions === undefined) delete process.env.NODE_OPTIONS
+  else process.env.NODE_OPTIONS = nodeOptions
+  if (readdirSync(dir).length === 0) fail('--cpu-prof: the child process wrote no profile')
+}
+
+console.log('same close (no child process left after any run)')
