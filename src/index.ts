@@ -3,12 +3,12 @@ import { join } from 'node:path'
 import type { PoolOptions, PoolRunnerInitializer, PoolWorker } from 'vitest/node'
 import { parseMemoryLimit } from './memory-limit.ts'
 import { FastForksPoolWorker } from './pool.ts'
-import { detect } from './support.ts'
+import { detect, isAtLeast } from './support.ts'
 
 export interface FastForksOptions {
   /**
-   * What to do if this Node.js cannot run the pool (older than v26.11.0, or
-   * no native addon for this platform).
+   * What to do if the pool cannot run: Node.js older than v26.11.0, Vitest
+   * older than v4.0.10, or no native addon for this platform.
    * - `'forks'`: print a warning and use the `forks` pool.
    * - `'error'`: throw an error.
    * @default 'forks'
@@ -42,7 +42,12 @@ export interface FastForksOptions {
 
 const require = createRequire(import.meta.url)
 
+// Vitest before v4.0.10 sends v8.serialize() buffers to a fork, and this
+// pool sends objects (vitest-dev/vitest#8999).
+const MINIMUM_VITEST = [4, 0, 10]
+
 let warned = false
+let warnedVitest = false
 
 /**
  * A Vitest pool that isolates every test file like the `forks` pool: each
@@ -75,15 +80,28 @@ export function fastForks(options: FastForksOptions = {}): PoolRunnerInitializer
   }
   return {
     name: 'fastforks',
-    createPoolWorker: (poolOptions) =>
-      usesDebugger(poolOptions) ? createDebugPoolWorker(poolOptions) : new FastForksPoolWorker(poolOptions, context),
+    createPoolWorker: (poolOptions) => {
+      const { version } = poolOptions.project.vitest
+      if (!isAtLeast(version, MINIMUM_VITEST)) {
+        const message = `[vitest-pool-fastforks] Vitest v${MINIMUM_VITEST.join('.')} or later is required (current: v${version}).`
+        if (options.fallback === 'error') throw new Error(message)
+        if (!warnedVitest) {
+          warnedVitest = true
+          console.warn(`${message} Using the "forks" pool instead.`)
+        }
+        return createForksPoolWorker(poolOptions)
+      }
+      // The Environments of this pool have no debugger connection, so a run
+      // with --inspect or --inspect-brk uses a fork for each test file.
+      if (usesDebugger(poolOptions)) return createForksPoolWorker(poolOptions)
+      return new FastForksPoolWorker(poolOptions, context)
+    },
   }
 }
 
-// The Environments of this pool have no debugger connection, so a run with
-// --inspect or --inspect-brk uses a fork for each test file. Take the forks
-// worker from the Vitest that runs, which has already loaded it.
-function createDebugPoolWorker(poolOptions: PoolOptions): PoolWorker {
+// Take the forks worker from the Vitest that runs, which has already loaded
+// it.
+function createForksPoolWorker(poolOptions: PoolOptions): PoolWorker {
   const { ForksPoolWorker } = require(join(poolOptions.distPath, 'node.js')) as typeof import('vitest/node')
   const worker = new ForksPoolWorker(poolOptions)
   Object.defineProperty(worker, 'name', { value: 'fastforks' })
