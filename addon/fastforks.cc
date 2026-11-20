@@ -7,7 +7,6 @@
 #include <uv.h>
 #include <v8.h>
 
-#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -186,18 +185,21 @@ struct PendingFree {
 // 3. The task frees the queued Environments and calls their done callbacks.
 //
 // The same uv_check callback also enters the context of the last loaded
-// Environment, and keeps it entered until the Environment is freed. Node.js
-// expects that, in a callback of the event loop, the current context belongs
-// to the Environment of the callback, because a process has one Environment
-// per loop. Here the host's context would be current. Then some Node.js code
+// Environment, and the task exits it before the free. Node.js expects that, in
+// a callback of the event loop, the current context belongs to the
+// Environment of the callback, because a process has one Environment per
+// loop. Here the host's context would be current. Then some Node.js code
 // aborts the process (the read of a Blob from fs.openAsBlob(), or
 // napi_make_callback() of an addon), and a V8 platform task runs the nextTick
-// queue of the host, not of the test file.
+// queue of the host, not of the test file. Callbacks of the host itself then
+// run with the context of the test file, so the host uses only callbacks in
+// which Node.js enters the host's context, such as IPC, timers, and
+// setImmediate().
 //
-// Context::Enter() and Exit() must be last in, first out. OnCheck() does
-// both, because uv_run() calls it with only the host's context and the
-// entered context below it. So the event loop of the host must not end while
-// a context is entered. The host exits with process.exit() or a signal.
+// Context::Enter() and Exit() must be last in, first out. OnCheck() and the
+// task call them with only the host's context and the entered context below.
+// So the event loop of the host must not end while a context is entered. The
+// host exits with process.exit() or a signal.
 struct Deferred {
   uv_loop_t* loop;
   std::shared_ptr<v8::TaskRunner> runner;
@@ -239,23 +241,14 @@ void OnCheck(uv_check_t*) {
   if (d->draining) return;
   uv_idle_stop(&d->idle);
   uv_check_stop(&d->check);
-  Isolate* isolate = Isolate::GetCurrent();
-  v8::HandleScope scope(isolate);
-  bool freeing = std::ranges::any_of(
-      d->queue, [d](const PendingFree& p) { return p.env == d->entered; });
-  if (d->entered != nullptr && (freeing || d->to_enter != nullptr)) {
-    node::GetMainContext(d->entered)->Exit();
-    d->entered = nullptr;
-  }
   if (d->to_enter != nullptr) {
+    v8::HandleScope scope(Isolate::GetCurrent());
+    if (d->entered != nullptr) node::GetMainContext(d->entered)->Exit();
     node::GetMainContext(d->to_enter)->Enter();
     d->entered = std::exchange(d->to_enter, nullptr);
   }
   if (d->queue.empty()) return;
   uv_stop(d->loop);
-  // Node.js runs the task in a callback scope of the Environment of the
-  // current context, so the context of a freed Environment must not be
-  // entered then.
   d->runner->PostTask(std::make_unique<FreeTask>());
 }
 
@@ -278,11 +271,20 @@ void FreeTask::Run() {
   // FreeEnvironment() runs uv_run(), which can run another FreeTask. The loop
   // below also frees the Environments that are queued in the meantime.
   if (d->draining) return;
-  d->draining = true;
   Isolate* isolate = Isolate::GetCurrent();
-  // Stop at an Environment whose context is entered: it was queued while this
-  // task ran, and OnCheck() exits its context first.
-  while (!d->queue.empty() && d->queue.front().env != d->entered) {
+  // Node.js runs this task in a callback scope of the Environment of the
+  // current context, and uses that Environment after the task. So exit the
+  // context here, and free in a new task. DrainTasks() runs that task before
+  // it returns, with the host's context.
+  if (d->entered != nullptr) {
+    v8::HandleScope scope(isolate);
+    node::GetMainContext(d->entered)->Exit();
+    d->entered = nullptr;
+    d->runner->PostTask(std::make_unique<FreeTask>());
+    return;
+  }
+  d->draining = true;
+  while (!d->queue.empty()) {
     PendingFree pending = std::move(d->queue.front());
     d->queue.erase(d->queue.begin());
     FreeNow(isolate, pending.env);
@@ -297,7 +299,6 @@ void FreeTask::Run() {
                              {0, 0});
   }
   d->draining = false;
-  if (!d->queue.empty()) Arm(d);
 }
 
 // free(id, done): queues the Environment, frees it after uv_run() returns (see
