@@ -13,13 +13,14 @@ mkdir -p "$out"
 projects=("$@")
 [ ${#projects[@]} -gt 0 ] || projects=(mui-x readest material-ui vitest vuetify base-ui instructure-ui js-test-runner-competition)
 n=$BENCH/node_modules/vitest-pool-fastforks
-jq -n --arg model "$(lscpu | sed -n 's/^Model name: *//p')" --argjson cpus "$(nproc)" \
-  --argjson threads "$(lscpu | sed -n 's/^Thread(s) per core: *//p')" \
+cpu=$(LC_ALL=C lscpu)
+jq -n --arg model "$(sed -n 's/^Model name: *//p' <<< "$cpu")" --argjson cpus "$(nproc)" \
+  --argjson threads "$(sed -n 's/^Thread(s) per core: *//p' <<< "$cpu")" \
   --argjson memKiB "$(awk '/^MemTotal:/ { print $2 }' /proc/meminfo)" \
   --arg virt "$(systemd-detect-virt 2>/dev/null || true)" --arg node "$(node --version)" \
   --arg package "$(jq -r .version $n/package.json)" --arg commit "$(cat $n/COMMIT)" --arg date "$(date -u +%F)" \
   '{model: $model, cpus: $cpus, threadsPerCore: $threads, memKiB: $memKiB, virt: $virt, node: $node,
-    package: $package, commit: $commit, date: $date}' > "$out/machine.json"
+    package: $package, commit: $commit, date: $date}' > "$out/machine.json" || exit 1
 steps=(warm-forks warm-fastforks r1-forks r1-fastforks r2-fastforks r2-forks r3-forks r3-fastforks)
 for p in "${projects[@]}"; do
   for cpus in all 4; do

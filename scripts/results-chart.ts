@@ -203,8 +203,7 @@ for (const [name, theme] of Object.entries(themes)) {
 const range = (values: number[]): string => {
   const min = Math.min(...values)
   const max = Math.max(...values)
-  const low = min >= 1 ? min.toFixed(2) : `${(1 / min).toFixed(2)}× slower`
-  return min >= 1 ? `${low}× to ${max.toFixed(2)}× faster` : `${low} to ${max.toFixed(2)}× faster`
+  return min >= 1 ? `${min.toFixed(2)}× to ${max.toFixed(2)}× faster` : `${ratio(min)} to ${ratio(max)}`
 }
 const real = results.projects.filter((p) => !p.synthetic)
 const synth = results.projects.filter((p) => p.synthetic)
@@ -216,7 +215,7 @@ const alt = [
   ),
   ...synth.map(
     (p) =>
-      `On the synthetic suite of ${p.files.toLocaleString('en-US')} test files, it is ${columns.map((column, c) => `${p.results[c]!.speedUp.toFixed(2)}× faster with ${column}`).join(' and ')}.`,
+      `On the synthetic suite of ${p.files.toLocaleString('en-US')} test files, it is ${columns.map((column, c) => `${ratio(p.results[c]!.speedUp)} with ${column}`).join(' and ')}.`,
   ),
   'The Results section has the same numbers in a table.',
 ].join(' ')
@@ -267,5 +266,7 @@ const END = '<!-- results:end -->'
 if (!readme.includes(START) || !readme.includes(END)) throw new Error(`README.md needs ${START} and ${END}`)
 readme =
   readme.slice(0, readme.indexOf(START) + START.length) + `\n\n${markdown}\n\n` + readme.slice(readme.indexOf(END))
-readme = readme.replace(/(<img alt=")[^"]*(" src="docs\/results-light\.svg")/, (_, a, b) => `${a}${alt}${b}`)
+const IMG = /(<img alt=")[^"]*(" src="docs\/results-light\.svg")/
+if (!IMG.test(readme)) throw new Error('README.md needs <img alt="..." src="docs/results-light.svg">')
+readme = readme.replace(IMG, (_, a, b) => `${a}${alt}${b}`)
 writeFileSync(readmeUrl, readme)

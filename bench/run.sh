@@ -7,10 +7,12 @@
 # average is below 2.0.
 set -u
 source "$(dirname "$0")/lib.sh"
-project=$1 pool=$2 label=$3 out=$4
+project=$1 pool=$2 label=$3
 TIMEOUT=1800
 "proj_${project//-/_}"
-mkdir -p "$out"
+out=$(mkdir -p "$4" && cd "$4" && pwd)
+# A report from an earlier run must not count for this run.
+rm -f "$out/$label.json" "$out/$label.json.gz"
 HOSTS='vitest-pool-fastforks/dist/host[.]cjs'
 
 # idle_pct <seconds>: the idle share of all CPUs in that time, in percent.

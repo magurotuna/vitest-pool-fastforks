@@ -58,23 +58,25 @@ const median = (values: number[]): number => {
 }
 
 let machine: any
-const projects = new Map<string, object>()
+const latest = new Map<string, string>()
 for (const dir of dirs) {
   const m = JSON.parse(readFileSync(join(dir, 'machine.json'), 'utf8'))
-  if (machine && (machine.model !== m.model || machine.cpus !== m.cpus)) {
-    console.error(`warning: ${dir} ran on another machine (${m.model}, ${m.cpus} CPUs)`)
+  if (machine && ['model', 'cpus', 'node', 'commit'].some((k) => machine[k] !== m[k])) {
+    console.error(
+      `warning: ${dir} ran on another machine or build (${m.model}, ${m.cpus} CPUs, ${m.node}, ${m.commit})`,
+    )
   }
   machine = m
   for (const key of Object.keys(META)) {
-    const file = join(dir, key, 'runs.jsonl')
-    if (existsSync(file)) projects.set(key, project(join(dir, key), key, readFileSync(file, 'utf8')))
+    if (existsSync(join(dir, key, 'runs.jsonl'))) latest.set(key, join(dir, key))
   }
 }
+const projects = new Map([...latest].map(([key, dir]) => [key, project(dir, key)]))
 
-function project(dir: string, key: string, jsonl: string): object {
+function project(dir: string, key: string): object {
   // A label that ran again has more than one line: the last one counts.
   const byLabel = new Map<string, Run>()
-  for (const line of jsonl.trim().split('\n')) {
+  for (const line of readFileSync(join(dir, 'runs.jsonl'), 'utf8').trim().split('\n')) {
     const run: Run = JSON.parse(line)
     byLabel.set(run.label, run)
   }
@@ -95,6 +97,7 @@ function project(dir: string, key: string, jsonl: string): object {
         }
         walls[pool]!.push(run.wall)
         const { testResults } = JSON.parse(gunzipSync(readFileSync(report)).toString())
+        if (testResults.length === 0) throw new Error(`${key} ${label}: no test files ran`)
         files.add(testResults.length)
         for (const file of testResults) if (file.status === 'failed') failed[pool]!.add(file.name)
       }

@@ -159,7 +159,7 @@ The numbers in [Results](#results) come from `bench/`. It needs a Debian machine
 1. Clone this repository on the machine, and check out the commit to measure.
 2. Run `bash bench/setup.sh`. It installs Node.js, builds this package, and sets up each project at a fixed commit.
 3. Run `bash bench/bench.sh`. It takes about 6 hours, and writes `/data/fastforks/raw/<time>/results.json`. It prints a warning if a file fails with only one pool.
-4. Copy `results.json` to `docs/results.json` in your checkout. Then run `npx vp fmt docs/results.json` and `node scripts/results-chart.ts`. The script writes the chart and the numbers in the Results section.
+4. On your computer, copy `results.json` to `docs/results.json` in a checkout of this repository. Then run `npx vp fmt docs/results.json` and `node scripts/results-chart.ts`. The script writes the chart and the numbers in the Results section.
 
 ### Releases
 
