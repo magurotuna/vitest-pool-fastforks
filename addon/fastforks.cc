@@ -243,6 +243,8 @@ void OnCheck(uv_check_t*) {
   uv_check_stop(&d->check);
   if (d->to_enter != nullptr) {
     v8::HandleScope scope(Isolate::GetCurrent());
+    // The pool loads an Environment only after the one before is freed. If
+    // not, the one before would stay alive without its context entered.
     if (d->entered != nullptr) node::GetMainContext(d->entered)->Exit();
     node::GetMainContext(d->to_enter)->Enter();
     d->entered = std::exchange(d->to_enter, nullptr);
