@@ -10,6 +10,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -73,16 +74,22 @@ void Create(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(static_cast<uint32_t>(envs.size() - 1));
 }
 
+void EnterLater(Isolate* isolate, node::Environment* env);
+
 // load(id, source): runs pre-execution and an embedder main script.
 void Load(const FunctionCallbackInfo<Value>& args) {
   node::Environment* env = GetEnv(args);
   if (env == nullptr) return;
   Isolate* isolate = args.GetIsolate();
   String::Utf8Value source(isolate, args[1]);
-  // LoadEnvironment() checks that the current context belongs to `env`.
-  Context::Scope context_scope(node::GetMainContext(env));
-  MaybeLocal<Value> result =
-      node::LoadEnvironment(env, std::string_view(*source, source.length()));
+  MaybeLocal<Value> result;
+  {
+    // LoadEnvironment() checks that the current context belongs to `env`.
+    Context::Scope context_scope(node::GetMainContext(env));
+    result =
+        node::LoadEnvironment(env, std::string_view(*source, source.length()));
+  }
+  EnterLater(isolate, env);
   Local<Value> value;
   if (result.ToLocal(&value)) args.GetReturnValue().Set(value);
 }
@@ -176,15 +183,34 @@ struct PendingFree {
 //    task from DrainTasks(), before it calls uv_run() again
 //    (SpinEventLoopInternal() in src/api/embed_helpers.cc).
 // 3. The task frees the queued Environments and calls their done callbacks.
+//
+// The same uv_check callback also enters the context of the last loaded
+// Environment, and the task exits it before the free. Node.js expects that, in
+// a callback of the event loop, the current context belongs to the
+// Environment of the callback, because a process has one Environment per
+// loop. Here the host's context would be current. Then some Node.js code
+// aborts the process (the read of a Blob from fs.openAsBlob(), or
+// napi_make_callback() of an addon), and a V8 platform task runs the nextTick
+// queue of the host, not of the test file. Callbacks of the host itself then
+// run with the context of the test file, so the host uses only callbacks in
+// which Node.js enters the host's context, such as IPC, timers, and
+// setImmediate().
+//
+// Context::Enter() and Exit() must be last in, first out. OnCheck() and the
+// task call them with only the host's context and the entered context below.
+// So the event loop of the host must not end while a context is entered. The
+// host exits with process.exit() or a signal.
 struct Deferred {
   uv_loop_t* loop;
   std::shared_ptr<v8::TaskRunner> runner;
-  // The handles are never closed. They keep the loop alive only from free()
-  // to OnCheck().
+  // The handles are never closed. They keep the loop alive only until
+  // OnCheck() runs.
   uv_idle_t idle;
   uv_check_t check;
   std::vector<PendingFree> queue;
   bool draining = false;
+  node::Environment* entered = nullptr;
+  node::Environment* to_enter = nullptr;
 };
 
 // One per process. Never deleted: the loop keeps pointers to its handles.
@@ -210,10 +236,36 @@ class FreeTask : public v8::Task {
 
 void OnCheck(uv_check_t*) {
   Deferred* d = deferred;
+  // A uv_run() inside FreeEnvironment(): the context of the Environment that
+  // is being freed is entered above. Wait for the outer uv_run().
+  if (d->draining) return;
   uv_idle_stop(&d->idle);
   uv_check_stop(&d->check);
+  if (d->to_enter != nullptr) {
+    v8::HandleScope scope(Isolate::GetCurrent());
+    // The pool loads an Environment only after the one before is freed. If
+    // not, the one before would stay alive without its context entered.
+    if (d->entered != nullptr) node::GetMainContext(d->entered)->Exit();
+    node::GetMainContext(d->to_enter)->Enter();
+    d->entered = std::exchange(d->to_enter, nullptr);
+  }
+  if (d->queue.empty()) return;
   uv_stop(d->loop);
   d->runner->PostTask(std::make_unique<FreeTask>());
+}
+
+// The idle handle keeps the poll phase from blocking. So if this runs after
+// the check phase, the next check phase comes without a wait for I/O. Both
+// calls do nothing if the handle is already active.
+void Arm(Deferred* d) {
+  uv_idle_start(&d->idle, [](uv_idle_t*) {});
+  uv_check_start(&d->check, OnCheck);
+}
+
+void EnterLater(Isolate* isolate, node::Environment* env) {
+  Deferred* d = GetDeferred(isolate);
+  d->to_enter = env;
+  Arm(d);
 }
 
 void FreeTask::Run() {
@@ -221,8 +273,19 @@ void FreeTask::Run() {
   // FreeEnvironment() runs uv_run(), which can run another FreeTask. The loop
   // below also frees the Environments that are queued in the meantime.
   if (d->draining) return;
-  d->draining = true;
   Isolate* isolate = Isolate::GetCurrent();
+  // Node.js runs this task in a callback scope of the Environment of the
+  // current context, and uses that Environment after the task. So exit the
+  // context here, and free in a new task. DrainTasks() runs that task before
+  // it returns, with the host's context.
+  if (d->entered != nullptr) {
+    v8::HandleScope scope(isolate);
+    node::GetMainContext(d->entered)->Exit();
+    d->entered = nullptr;
+    d->runner->PostTask(std::make_unique<FreeTask>());
+    return;
+  }
+  d->draining = true;
   while (!d->queue.empty()) {
     PendingFree pending = std::move(d->queue.front());
     d->queue.erase(d->queue.begin());
@@ -253,6 +316,7 @@ void Free(const FunctionCallbackInfo<Value>& args) {
   }
   Deferred* d = GetDeferred(isolate);
   envs[args[0].As<v8::Uint32>()->Value()] = nullptr;
+  if (d->to_enter == env) d->to_enter = nullptr;
   // The Environment can still run callbacks until it is freed. A fork can
   // also run callbacks until it exits. Do not call node::Stop() here to block
   // them: with node::Stop(), a stress test that freed many Environments in a
@@ -261,11 +325,7 @@ void Free(const FunctionCallbackInfo<Value>& args) {
       {env, v8::Global<v8::Function>(isolate, args[1].As<v8::Function>())});
   // FreeTask::Run() also frees the Environments that are queued while it runs.
   if (d->draining) return;
-  // The idle handle keeps the poll phase from blocking. So if free() runs
-  // after the check phase, the next check phase comes without a wait for I/O.
-  // Both calls do nothing if the handle is already active.
-  uv_idle_start(&d->idle, [](uv_idle_t*) {});
-  uv_check_start(&d->check, OnCheck);
+  Arm(d);
 }
 
 }  // namespace
