@@ -48,11 +48,8 @@ export interface LoadedModule {
 export interface ModuleCache {
   getResolved(key: string): ResolvedModule | undefined
   setResolved(key: string, url: string, format: string | null | undefined): void
-  /** Returns the module only if the file did not change. */
   getLoaded(url: string): LoadedModule | undefined
   setLoaded(url: string, format: string, source: string, id: string): void
-  /** The id of the file, or undefined if it changed in the last 2 seconds. */
-  identify(url: string): string | undefined
 }
 
 /** What the child process puts on the global object of an Environment. */

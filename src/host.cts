@@ -1,7 +1,7 @@
 // The child process. Creates one Node.js Environment per test file with the
 // addon and runs Vitest's fork entry inside it (entry.cts). Messages from the
 // main process are routed by worker id.
-import { appendFileSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getHeapStatistics, setFlagsFromString } from 'node:v8'
@@ -54,27 +54,11 @@ const execArgv = withoutSnapshotBlob(process.execArgv)
 // Environment in memory after it is freed.
 const resolved = new Map<string, ResolvedModule>()
 const loaded = new Map<string, LoadedModule>()
-// A file in node_modules can change too, so a source is used only while the
-// file has the same change time, size, and inode. A file that changed in the
-// last 2 seconds is not kept: it can change again within one tick of the file
-// system clock and keep the same identity.
-function identify(url: string, path?: string): string | undefined {
-  try {
-    const s = statSync(path ?? fileURLToPath(url))
-    return Date.now() - s.ctimeMs < 2000 ? undefined : `${s.ctimeMs}:${s.size}:${s.ino}`
-  } catch {
-    return undefined
-  }
-}
 const moduleCache: Bridge['moduleCache'] = {
   getResolved: (key) => resolved.get(key),
   setResolved: (key, url, format) => void resolved.set(key, { url, format }),
-  getLoaded: (url) => {
-    const hit = loaded.get(url)
-    return hit !== undefined && identify(url, hit.path) === hit.id ? hit : undefined
-  },
+  getLoaded: (url) => loaded.get(url),
   setLoaded: (url, format, source, id) => void loaded.set(url, { format, source, id, path: fileURLToPath(url) }),
-  identify: (url) => identify(url),
 }
 
 const entry = join(__dirname, 'entry.cjs')
