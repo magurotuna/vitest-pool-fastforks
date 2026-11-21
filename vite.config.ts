@@ -1,6 +1,13 @@
 import { defineConfig } from 'vite-plus'
 
-const ignorePatterns = ['dist/**', 'build/**', 'prebuilds/**', 'test/fixtures/**', 'test/.results/**']
+const ignorePatterns = [
+  'dist/**',
+  'build/**',
+  'prebuilds/**',
+  'test/fixtures/**',
+  'test/.results/**',
+  'bench/configs/**',
+]
 
 export default defineConfig({
   pack: [

@@ -1,8 +1,10 @@
-// Draws the results chart of the README: docs/results-light.svg and
-// docs/results-dark.svg. The numbers are the ones in the README table.
+// Writes the results from docs/results.json (bench/summarize.ts) into the
+// README: the chart (docs/results-light.svg and docs/results-dark.svg), its
+// alt text, and the part of the Results section between the results markers.
 //
 // Usage: node scripts/results-chart.ts
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import type { Project, Results } from '../bench/summarize.ts'
 
 interface Run {
   /** Wall time in seconds with forks, then with this pool. */
@@ -16,78 +18,19 @@ interface Row {
   /** A second line under the name. */
   note?: string
   files: string
-  /** 16 vCPUs, then 4 vCPUs. */
   runs: [Run, Run]
 }
 
-const rows: Row[] = [
-  {
-    name: 'readest',
-    files: '1,265',
-    runs: [
-      { seconds: [351.8, 142.3], speedUp: 2.47 },
-      { seconds: [423.0, 198.5], speedUp: 2.13 },
-    ],
-  },
-  {
-    name: 'Vuetify',
-    files: '81',
-    runs: [
-      { seconds: [9.6, 6.1], speedUp: 1.59 },
-      { seconds: [31.8, 14.2], speedUp: 2.24 },
-    ],
-  },
-  {
-    name: 'Material UI',
-    files: '467',
-    runs: [
-      { seconds: [64.2, 43.5], speedUp: 1.48 },
-      { seconds: [222.8, 110.6], speedUp: 2.01 },
-    ],
-  },
-  {
-    name: 'Base UI',
-    files: '394',
-    runs: [
-      { seconds: [91.3, 64.3], speedUp: 1.42 },
-      { seconds: [325.7, 219.6], speedUp: 1.48 },
-    ],
-  },
-  {
-    name: 'MUI X',
-    files: '996',
-    runs: [
-      { seconds: [420.8, 306.7], speedUp: 1.37 },
-      { seconds: [1254.2, 781.2], speedUp: 1.61 },
-    ],
-  },
-  {
-    name: 'Vitest (test/unit)',
-    files: '217',
-    runs: [
-      { seconds: [6.6, 5.6], speedUp: 1.18 },
-      { seconds: [23.1, 13.7], speedUp: 1.69 },
-    ],
-  },
-  {
-    name: 'Instructure UI',
-    files: '20',
-    runs: [
-      { seconds: [4.6, 4.4], speedUp: 1.04 },
-      { seconds: [3.8, 4.0], speedUp: 0.96 },
-    ],
-  },
-]
-const synthetic: Row = {
-  name: 'Synthetic suite',
-  note: 'js-test-runner-competition',
-  files: '500',
-  runs: [
-    { seconds: [29.1, 11.1], speedUp: 2.62 },
-    { seconds: [109.3, 31.9], speedUp: 3.43 },
-  ],
-}
-const columns = ['16 vCPUs', '4 vCPUs']
+const results: Results = JSON.parse(readFileSync(new URL('../docs/results.json', import.meta.url), 'utf8'))
+const toRow = (p: Project): Row => ({
+  name: p.synthetic ? 'Synthetic suite' : p.scope ? `${p.name} (${p.scope.replaceAll('`', '')})` : p.name,
+  note: p.synthetic ? p.name : undefined,
+  files: p.files.toLocaleString('en-US'),
+  runs: p.results.map((r) => ({ seconds: [r.forks, r.fastforks], speedUp: r.speedUp })) as [Run, Run],
+})
+const rows = results.projects.filter((p) => !p.synthetic).map(toRow)
+const synthetic = results.projects.filter((p) => p.synthetic).map(toRow)
+const columns = results.projects[0]!.results.map((r) => `${r.cpus} vCPUs`)
 
 const themes = {
   light: {
@@ -147,7 +90,7 @@ function text(
 }
 
 function draw(theme: Theme): string {
-  const all = [...rows, synthetic]
+  const all = [...rows, ...synthetic]
   const bottom = TOP + all.length * ROW + 8
   const height = bottom + 16
   const parts: string[] = []
@@ -158,7 +101,7 @@ function draw(theme: Theme): string {
     text(MARGIN, 36, 'Wall time of the test run: forks and this pool', { size: 17, weight: 600, fill: theme.primary }),
   )
   parts.push(
-    text(MARGIN, 58, 'Shorter is better. Median of 3 runs.', {
+    text(MARGIN, 58, `Shorter is better. Median of ${results.runs} runs.`, {
       size: 12.5,
       fill: theme.secondary,
     }),
@@ -176,7 +119,7 @@ function draw(theme: Theme): string {
   all.forEach((row, i) => {
     const top = TOP + i * ROW
     if (i > 0) {
-      const color = row === synthetic ? theme.axis : theme.rule
+      const color = row === synthetic[0] ? theme.axis : theme.rule
       parts.push(`<line x1="${MARGIN}" x2="${WIDTH - MARGIN}" y1="${top - 6}" y2="${top - 6}" stroke="${color}"/>`)
     }
     parts.push(text(MARGIN, top + 22, row.name, { size: 14, weight: 600, fill: theme.primary }))
@@ -228,3 +171,75 @@ mkdirSync(dir, { recursive: true })
 for (const [name, theme] of Object.entries(themes)) {
   writeFileSync(new URL(`results-${name}.svg`, dir), draw(theme))
 }
+
+// The README: the alt text of the chart, and the part between the markers.
+const range = (values: number[]): string => {
+  const min = Math.min(...values)
+  const max = Math.max(...values)
+  return min >= 1 ? `${min.toFixed(2)}× to ${max.toFixed(2)}× faster` : `${ratio(min)} to ${ratio(max)}`
+}
+const real = results.projects.filter((p) => !p.synthetic)
+const synth = results.projects.filter((p) => p.synthetic)
+const alt = [
+  `Bar charts of the wall time with forks and with this pool, one for each project${synth.length ? ' and one for a synthetic suite' : ''}, with ${columns.join(' and with ')}.`,
+  ...columns.map(
+    (column, c) =>
+      `With ${column}, ${c === 0 ? 'this pool' : 'it'} is ${range(real.map((p) => p.results[c]!.speedUp))} per project.`,
+  ),
+  ...synth.map(
+    (p) =>
+      `On the synthetic suite of ${p.files.toLocaleString('en-US')} test files, it is ${columns.map((column, c) => `${ratio(p.results[c]!.speedUp)} with ${column}`).join(' and ')}.`,
+  ),
+  'The Results section has the same numbers in a table.',
+].join(' ')
+
+const { machine } = results
+const [all, limited] = results.projects[0]!.results.map((r) => r.cpus) as [number, number]
+const versions = new Map<string, string[]>()
+for (const p of results.projects) versions.set(p.vitest, [...(versions.get(p.vitest) ?? []), p.name])
+const [common] = [...versions].sort((a, b) => b[1].length - a[1].length)[0]!
+const others = [...versions].filter(([v]) => v !== common).map(([v, names]) => `${names.join(', ')}: ${v}`)
+const workers = results.projects.filter((p) => p.workers).map((p) => `${p.name}, ${p.workers}`)
+const list = (items: string[]): string =>
+  items.length < 3 ? items.join(' and ') : `${items.slice(0, -1).join(', ')}, and ${items.at(-1)}`
+const setup = [
+  `- Machine: ${machine.description} with ${all} vCPUs (${machine.cpu}${machine.smt ? '' : ', no SMT'}) and ${machine.memoryGiB} GiB of memory, ${machine.os}.`,
+  `- Software: ${list([...(machine.package ? [`vitest-pool-fastforks ${machine.package}`] : []), `Node.js ${machine.node}`, `Vitest ${common}${others.length ? ` (${others.join('; ')})` : ''}`])}.`,
+  `- Method: the median wall time of ${results.runs} runs, in seconds${machine.date ? `, measured on ${machine.date}` : ''}.`,
+  `- Conditions: "${all} vCPUs" uses all CPUs. "${limited} vCPUs" limits the run to ${limited} CPUs (\`taskset -c 0-${limited - 1}\`), like a common CI runner. Both use Vitest's default number of workers (${all - 1} and ${limited - 1})${workers.length ? `, except ${workers.join(', and ')}` : ''}.`,
+]
+const seconds1 = (value: number): string =>
+  value.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const table = [
+  ['Project', 'Test files', ...columns.flatMap((column) => [`${column}: forks → this pool`, 'Speed-up'])],
+  ...results.projects.map((p) => [
+    `[${p.name}](${p.url})${p.scope ? ` (${p.scope})` : ''}${p.synthetic ? ' (synthetic)' : ''}`,
+    p.files.toLocaleString('en-US'),
+    ...p.results.flatMap((r) => [`${seconds1(r.forks)} → ${seconds1(r.fastforks)}`, `${r.speedUp.toFixed(2)}×`]),
+  ]),
+]
+// Padded as the formatter of vp check pads a table: the first column to the
+// left, the others to the right.
+const width = table[0]!.map((_, c) => Math.max(...table.map((cells) => cells[c]!.length)))
+const pad = (cell: string, c: number): string =>
+  c === 0 ? cell + ' '.repeat(width[c]! - cell.length) : ' '.repeat(width[c]! - cell.length) + cell
+const line = (cells: string[]): string => `| ${cells.map(pad).join(' | ')} |`
+const markdown = [
+  ...setup,
+  '',
+  line(table[0]!),
+  `| ${width.map((w, c) => (c === 0 ? '-'.repeat(w) : `${'-'.repeat(w - 1)}:`)).join(' | ')} |`,
+  ...table.slice(1).map(line),
+].join('\n')
+
+const readmeUrl = new URL('../README.md', import.meta.url)
+let readme = readFileSync(readmeUrl, 'utf8')
+const START = '<!-- results:start -->'
+const END = '<!-- results:end -->'
+if (!readme.includes(START) || !readme.includes(END)) throw new Error(`README.md needs ${START} and ${END}`)
+readme =
+  readme.slice(0, readme.indexOf(START) + START.length) + `\n\n${markdown}\n\n` + readme.slice(readme.indexOf(END))
+const IMG = /(<img alt=")[^"]*(" src="docs\/results-light\.svg")/
+if (!IMG.test(readme)) throw new Error('README.md needs <img alt="..." src="docs/results-light.svg">')
+readme = readme.replace(IMG, (_, a, b) => `${a}${alt}${b}`)
+writeFileSync(readmeUrl, readme)
