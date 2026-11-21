@@ -6,6 +6,48 @@ import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { gunzipSync } from 'node:zlib'
 
+/** The format of results.json, which scripts/results-chart.ts reads. */
+export interface Project {
+  name: string
+  url: string
+  scope?: string
+  synthetic?: boolean
+  workers?: string
+  files: number
+  vitest: string
+  /** All CPUs, then fewer CPUs. Wall times in seconds. */
+  results: { cpus: number; forks: number; fastforks: number; speedUp: number; walls?: Record<string, number[]> }[]
+}
+
+export interface Results {
+  machine: {
+    description: string
+    cpu: string
+    smt: boolean
+    cpus: number
+    memoryGiB: number
+    os: string
+    node: string
+    package?: string
+    date?: string
+  }
+  runs: number
+  projects: Project[]
+}
+
+/** machine.json, written by bench.sh. */
+interface Machine {
+  model: string
+  cpus: number
+  threadsPerCore: number
+  memKiB: number
+  virt: string
+  node: string
+  package: string
+  commit: string
+  date: string
+}
+
 interface Run {
   label: string
   pool: string
@@ -60,16 +102,15 @@ const median = (values: number[]): number => {
   return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2
 }
 
-let machine: any
+const machines = dirs.map((dir): Machine => JSON.parse(readFileSync(join(dir, 'machine.json'), 'utf8')))
+const machine = machines.at(-1)!
+for (const [i, m] of machines.entries()) {
+  if ((['model', 'cpus', 'node', 'commit'] as const).some((k) => m[k] !== machine[k])) {
+    console.error(`warning: ${dirs[i]} ran on another machine or build than ${dirs.at(-1)}`)
+  }
+}
 const latest = new Map<string, string>()
 for (const dir of dirs) {
-  const m = JSON.parse(readFileSync(join(dir, 'machine.json'), 'utf8'))
-  if (machine && ['model', 'cpus', 'node', 'commit'].some((k) => machine[k] !== m[k])) {
-    console.error(
-      `warning: ${dir} ran on another machine or build (${m.model}, ${m.cpus} CPUs, ${m.node}, ${m.commit})`,
-    )
-  }
-  machine = m
   for (const key of Object.keys(META)) {
     if (existsSync(join(dir, key, 'runs.jsonl'))) latest.set(key, join(dir, key))
   }
@@ -78,7 +119,7 @@ const projects = new Map([...latest].map(([key, dir]) => [key, project(dir, key)
 const missing = Object.keys(META).filter((key) => !projects.has(key))
 if (missing.length) console.error(`warning: no runs of ${missing.join(', ')}`)
 
-function project(dir: string, key: string): object {
+function project(dir: string, key: string): Project {
   // A label that ran again has more than one line: the last one counts.
   const byLabel = new Map<string, Run>()
   for (const line of readFileSync(join(dir, 'runs.jsonl'), 'utf8').trim().split('\n')) {
@@ -133,33 +174,26 @@ function project(dir: string, key: string): object {
     }
   })
   if (files.size > 1) console.error(`warning: ${key}: the runs have different file counts: ${[...files].join(', ')}`)
-  return { ...META[key], files: Math.max(...files), vitest: [...byLabel.values()][0]!.vitest, results }
+  return { ...META[key]!, files: Math.max(...files), vitest: [...byLabel.values()][0]!.vitest, results }
 }
 
 function round(value: number, digits: number): number {
   return Number(value.toFixed(digits))
 }
 
-console.log(
-  JSON.stringify(
-    {
-      machine: {
-        description: machine.virt && machine.virt !== 'none' ? 'a virtual machine' : 'a machine',
-        cpu: machine.model,
-        smt: machine.threadsPerCore > 1,
-        cpus: machine.cpus,
-        memoryGiB: Math.round(machine.memKiB / 1024 / 1024),
-        os: 'Linux',
-        node: machine.node,
-        package: machine.package,
-        date: machine.date,
-      },
-      runs: ROUNDS,
-      projects: Object.keys(META)
-        .filter((key) => projects.has(key))
-        .map((key) => projects.get(key)),
-    },
-    null,
-    2,
-  ),
-)
+const results: Results = {
+  machine: {
+    description: machine.virt && machine.virt !== 'none' ? 'a virtual machine' : 'a machine',
+    cpu: machine.model,
+    smt: machine.threadsPerCore > 1,
+    cpus: machine.cpus,
+    memoryGiB: Math.round(machine.memKiB / 1024 / 1024),
+    os: 'Linux',
+    node: machine.node,
+    package: machine.package,
+    date: machine.date,
+  },
+  runs: ROUNDS,
+  projects: Object.keys(META).flatMap((key) => projects.get(key) ?? []),
+}
+console.log(JSON.stringify(results, null, 2))

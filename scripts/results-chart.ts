@@ -4,34 +4,7 @@
 //
 // Usage: node scripts/results-chart.ts
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
-
-interface Project {
-  name: string
-  url: string
-  scope?: string
-  synthetic?: boolean
-  workers?: string
-  files: number
-  vitest: string
-  /** All CPUs, then fewer CPUs. Wall times in seconds. */
-  results: { cpus: number; forks: number; fastforks: number; speedUp: number }[]
-}
-
-interface Results {
-  machine: {
-    description: string
-    cpu: string
-    smt: boolean
-    cpus: number
-    memoryGiB: number
-    os: string
-    node: string
-    package?: string
-    date?: string
-  }
-  runs: number
-  projects: Project[]
-}
+import type { Project, Results } from '../bench/summarize.ts'
 
 interface Run {
   /** Wall time in seconds with forks, then with this pool. */
