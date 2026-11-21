@@ -30,9 +30,9 @@ interface Registry {
   /** The default memory limit of a child process. */
   memoryLimit: number
   closed: boolean
-  /** The workers that run a test file. */
-  running: Set<FastForksPoolWorker>
-  /** Increases when a worker starts while no other worker runs a test file. */
+  /** From the first test file of a run until the run ends. See attach(). */
+  inRun: boolean
+  /** Increases at the start of each run. */
   run: number
 }
 
@@ -279,7 +279,7 @@ function getRegistry(options: PoolOptions): Registry {
       limit: 2 * workers,
       memoryLimit: memory / workers,
       closed: false,
-      running: new Set(),
+      inRun: false,
       run: 0,
     }
     registries.set(vitest, created)
@@ -401,28 +401,25 @@ export class FastForksPoolWorker implements PoolWorker {
     // While a test file runs, the main process waits for the child process.
     setRef(host.child, true)
     this.host = host
-    // A new run, for example in watch mode or through the Vitest API. Vitest
-    // calls stop() after the Environment finished its teardown, so the set is
-    // rarely empty between two files of a run, and it is empty between two
-    // runs. An extra new run makes the child processes read the files again. A
-    // missed one needs a run that starts before the teardown of the run before
-    // it finished.
+    // A new run (or collect), for example in watch mode or through the Vitest
+    // API. Vitest has no event for it, but every test file of a run starts
+    // before waitForTestRunEnd() resolves. Two runs that overlap count as one.
     const { registry } = host
-    if (registry.running.size === 0) registry.run++
-    registry.running.add(this)
-    try {
-      await host.request('create', this.id, 'created', registry.run)
-    } catch (error) {
-      registry.running.delete(this)
-      throw error
+    if (!registry.inRun) {
+      registry.inRun = true
+      registry.run++
+      const end = (): void => {
+        registry.inRun = false
+      }
+      void this.options.project.vitest.waitForTestRunEnd().then(end, end)
     }
+    await host.request('create', this.id, 'created', registry.run)
   }
 
   async stop(): Promise<void> {
     const host = this.host
     if (!host) return
     this.host = undefined
-    host.registry.running.delete(this)
     for (const [key, callback] of this.listeners) host.events.off(key, callback)
     this.listeners = []
     if (host.exited) return

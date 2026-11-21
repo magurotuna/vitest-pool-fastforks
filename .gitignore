@@ -6,5 +6,6 @@ dist/
 *.tgz
 test/.results/
 test/fixtures/.watch-*/
+test/fixtures/.api-*/
 results/
 .direnv/

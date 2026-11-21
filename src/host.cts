@@ -73,6 +73,7 @@ function create(id: number, nextRun: number): void {
   // A file in node_modules can change between runs.
   if (nextRun !== run) {
     run = nextRun
+    resolved.clear()
     loaded.clear()
   }
   const sid = addon.create(FLAGS, argv, execArgv)
