@@ -58,9 +58,9 @@ const moduleCache: Bridge['moduleCache'] = {
   setResolved: (key, url, format) => void resolved.set(key, { url, format }),
   getLoaded: (url) => loaded.get(url),
   setLoaded: (url, format, source) => void loaded.set(url, { format, source }),
-  deleteLoaded: (url) => void loaded.delete(url),
-  since: 0,
+  since: options.since,
 }
+let run = 0
 
 const entry = join(__dirname, 'entry.cjs')
 // The embedder main script can import only built-in modules, so it loads
@@ -69,10 +69,10 @@ const LOAD = `return require('module').createRequire(${JSON.stringify(entry)})($
 
 const environments = new Map<number, Environment>()
 
-function create(id: number, since: number): void {
-  // A new run, in watch mode.
-  if (since !== moduleCache.since) {
-    moduleCache.since = since
+function create(id: number, nextRun: number): void {
+  // A file in node_modules can change between runs.
+  if (nextRun !== run) {
+    run = nextRun
     loaded.clear()
   }
   const sid = addon.create(FLAGS, argv, execArgv)
@@ -200,7 +200,7 @@ if (options.cpu) {
 
 process.on('message', (m: ControlMessage | WorkerMessage) => {
   if ('__fastforks_ctl' in m) {
-    if (m.__fastforks_ctl === 'create') create(m.id!, m.since!)
+    if (m.__fastforks_ctl === 'create') create(m.id!, m.run!)
     else if (m.__fastforks_ctl === 'free') free(m.id!)
     return
   }

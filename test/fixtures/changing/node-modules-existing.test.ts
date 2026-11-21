@@ -3,8 +3,8 @@ import { createRequire } from "node:module"
 import { fileURLToPath } from "node:url"
 import { expect, test } from "vitest"
 
-// setup.mjs writes this file before the run, so the pool keeps it. A hot
-// reload removes it from the module cache and requires it again.
+// test/run.mjs writes this file before Vitest starts, so the pool keeps it. A
+// hot reload removes it from the module cache and requires it again.
 test("requires a file in node_modules again after it changed, if it existed before the run", () => {
   const path = fileURLToPath(new URL("./generated/node_modules/existing/index.cjs", import.meta.url))
   const require = createRequire(import.meta.url)

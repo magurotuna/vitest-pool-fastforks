@@ -47,10 +47,10 @@ const toPath = fileURLToPath
 // between runs in watch mode.
 const cache = bridge.moduleCache
 // A file in node_modules can change too. The cache keeps a file only if it
-// did not change since the run started, so a file that a test writes is read
-// from disk each time. A second load of a file in one Environment means that
-// a test removed it from a module cache, for example after it changed, so it
-// is read from disk too.
+// did not change after the main process started, and each run starts with an
+// empty cache. So a file that a test writes is read from disk each time. If an
+// Environment loads a file a second time, for example after a test removed it
+// from a module cache, the file is checked again.
 const unchanged = (url: string): boolean => {
   try {
     return stat(toPath(url)).ctimeMs < cache.since
@@ -75,20 +75,18 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (!inNodeModules(url)) return nextLoad(url, context)
-    if (setHas(loadedHere, url)) {
-      cache.deleteLoaded(url)
-      return nextLoad(url, context)
-    }
+    const again = setHas(loadedHere, url)
     setAdd(loadedHere, url)
     const hit = cache.getLoaded(url)
-    if (hit !== undefined) return { format: hit.format, source: hit.source, shortCircuit: true }
-    // Before the read, so that a change during the read is not kept.
-    const keep = unchanged(url)
+    if (hit !== undefined && (!again || unchanged(url))) {
+      return { format: hit.format, source: hit.source, shortCircuit: true }
+    }
     const result = nextLoad(url, context)
     // A .js file without a "type" in its package.json has no format yet, and
-    // the CommonJS loader handles JSON itself; neither is cached.
+    // the CommonJS loader handles JSON itself; neither is cached. The check
+    // runs after the read, so that a change during the read is not kept.
     const format = result.format
-    if (keep && (format === 'module' || format === 'commonjs') && result.source != null) {
+    if ((format === 'module' || format === 'commonjs') && result.source != null && unchanged(url)) {
       // A string, not this realm's Buffer.
       const source = typeof result.source === 'string' ? result.source : decode(decoder, result.source as Uint8Array)
       cache.setLoaded(url, format, source)

@@ -36,12 +36,15 @@ const STEPS = [
     ],
     'Tests  1 passed',
   ],
+  // The first run keeps the file in the child process, and the next run must
+  // read it again.
+  [[['modules.test.ts', modulesTest(1)]], 'Tests  1 passed'],
   [
     [
       ['node_modules/watched/index.cjs', 'module.exports = 2\n'],
       ['modules.test.ts', modulesTest(2)],
     ],
-    'Tests  1 failed',
+    'Tests  1 passed',
   ],
 ]
 
@@ -56,13 +59,13 @@ test("required", () => {
 `
 }
 
-function modulesTest(step) {
+function modulesTest(value) {
   return `import { createRequire } from "node:module"
 import { expect, test } from "vitest"
 
-// step ${step}
+// value ${value}
 test("node_modules", () => {
-  expect(createRequire(import.meta.url)("./node_modules/watched/index.cjs")).toBe(1)
+  expect(createRequire(import.meta.url)("./node_modules/watched/index.cjs")).toBe(${value})
 })
 `
 }
@@ -89,11 +92,12 @@ async function run(pool) {
   cpSync(join(root, 'fixtures', 'watch'), dir, { recursive: true })
   mkdirSync(join(dir, 'lib'), { recursive: true })
   // This pool keeps a file in node_modules that did not change in the 2
-  // seconds before the run, so wait longer.
+  // seconds before Vitest started, so wait longer.
   mkdirSync(join(dir, 'node_modules', 'watched'), { recursive: true })
   writeFileSync(join(dir, 'node_modules', 'watched', 'index.cjs'), 'module.exports = 1\n')
   await new Promise((resolve) => setTimeout(resolve, 2100))
-  // One worker, so that each run uses the same child process of this pool.
+  // One worker. The pool reuses the child process that finished last, so a
+  // run of one test file uses the child process of the run before.
   const child = spawn(process.execPath, [vitest, '--configLoader', 'runner', '--watch', '--maxWorkers=1'], {
     cwd: dir,
     env: { ...process.env, POOL: pool, FASTFORKS_FALLBACK: 'error', CI: '' },

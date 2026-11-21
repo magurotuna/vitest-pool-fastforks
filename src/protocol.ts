@@ -13,6 +13,8 @@ export interface HostOptions {
   inspector: boolean
   /** Measurement only: a path prefix for the CPU time of the process. */
   cpu: string | undefined
+  /** See ModuleCache.since. */
+  since: number
 }
 
 export type ControlType = 'ready' | 'create' | 'created' | 'free' | 'freed'
@@ -23,8 +25,8 @@ export interface ControlMessage {
   id?: number
   /** In 'freed': the memory of the child process after it freed the Environment. */
   rss?: number
-  /** In 'create': see ModuleCache.since. */
-  since?: number
+  /** In 'create': the run. A child process clears its module cache when it changes. */
+  run?: number
 }
 
 /** A message of Vitest between the main process and a test file. */
@@ -49,8 +51,7 @@ export interface ModuleCache {
   setResolved(key: string, url: string, format: string | null | undefined): void
   getLoaded(url: string): LoadedModule | undefined
   setLoaded(url: string, format: string, source: string): void
-  deleteLoaded(url: string): void
-  /** The start of the run, minus 2 seconds. A file that changed later is not kept. */
+  /** 2 seconds before the main process started. A file that changed later is not kept. */
   since: number
 }
 

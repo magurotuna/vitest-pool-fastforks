@@ -19,7 +19,8 @@ test('a request to a child process that closed its channel rejects', async () =>
       limit: 1,
       memoryLimit: 0,
       closed: false,
-      since: 0,
+      running: new Set(),
+      run: 0,
     })
     await expect(host.request('free', 1, 'freed')).rejects.toMatchObject({ code: 'ERR_IPC_CHANNEL_CLOSED' })
   } finally {

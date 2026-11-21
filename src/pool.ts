@@ -30,8 +30,10 @@ interface Registry {
   /** The default memory limit of a child process. */
   memoryLimit: number
   closed: boolean
-  /** See ModuleCache.since in protocol.ts. */
-  since: number
+  /** The workers that run a test file. */
+  running: Set<FastForksPoolWorker>
+  /** Increases when a worker starts while no other worker runs a test file. */
+  run: number
 }
 
 interface SharedState {
@@ -84,14 +86,14 @@ export class Host {
   }
 
   /** Sends a control message and waits for the reply with the same id. */
-  request(type: ControlType, id: number, reply: ControlType, since?: number): Promise<ControlMessage> {
+  request(type: ControlType, id: number, reply: ControlType, run?: number): Promise<ControlMessage> {
     const replied = this.waitFor(reply, id)
     if (this.exited) return replied
     // The send fails if the child process closed its channel but did not exit
     // yet (EPIPE on Windows). With a callback, the error rejects the request
     // instead of becoming an 'error' event of the child process.
     const failed = new Promise<never>((_, reject) => {
-      this.child.send({ __fastforks_ctl: type, id, since } satisfies ControlMessage, (error) => {
+      this.child.send({ __fastforks_ctl: type, id, run } satisfies ControlMessage, (error) => {
         if (error) reject(error)
       })
     })
@@ -131,6 +133,8 @@ function spawnHost(
     argv1: resolve(options.distPath, 'workers/forks.js'),
     inspector: needsInspector(options, context),
     cpu: process.env.VITEST_POOL_FASTFORKS_CPU,
+    // 2 seconds earlier: a file system can have a coarse clock.
+    since: performance.timeOrigin - 2000,
   }
   const child = fork(hostScript, [], {
     execArgv: [...(blob ? ['--snapshot-blob', blob] : []), ...options.execArgv],
@@ -275,16 +279,12 @@ function getRegistry(options: PoolOptions): Registry {
       limit: 2 * workers,
       memoryLimit: memory / workers,
       closed: false,
-      // 2 seconds before the start: a file system can have a coarse clock.
-      since: Date.now() - 2000,
+      running: new Set(),
+      run: 0,
     }
     registries.set(vitest, created)
     // A program can close Vitest and start it again in the same process.
     vitest.onClose(() => closeRegistry(created))
-    // In watch mode, check the files in node_modules again for each run.
-    vitest.onTestsRerun(() => {
-      created.since = Date.now() - 2000
-    })
     registry = created
   }
   return registry
@@ -401,13 +401,28 @@ export class FastForksPoolWorker implements PoolWorker {
     // While a test file runs, the main process waits for the child process.
     setRef(host.child, true)
     this.host = host
-    await host.request('create', this.id, 'created', host.registry.since)
+    // A new run, for example in watch mode or through the Vitest API. Vitest
+    // calls stop() after the Environment finished its teardown, so the set is
+    // rarely empty between two files of a run, and it is empty between two
+    // runs. An extra new run makes the child processes read the files again. A
+    // missed one needs a run that starts before the teardown of the run before
+    // it finished.
+    const { registry } = host
+    if (registry.running.size === 0) registry.run++
+    registry.running.add(this)
+    try {
+      await host.request('create', this.id, 'created', registry.run)
+    } catch (error) {
+      registry.running.delete(this)
+      throw error
+    }
   }
 
   async stop(): Promise<void> {
     const host = this.host
     if (!host) return
     this.host = undefined
+    host.registry.running.delete(this)
     for (const [key, callback] of this.listeners) host.events.off(key, callback)
     this.listeners = []
     if (host.exited) return
