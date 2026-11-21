@@ -163,7 +163,7 @@ The numbers in [Results](#results) come from `bench/`. It needs a Debian machine
 
 ### Releases
 
-1. Open a pull request that sets the version in `package.json` and `package-lock.json`, and that updates the results ([Benchmark](#benchmark)). The body of the pull request becomes the release note, so write it for users.
+1. Open a pull request that sets the version in `package.json` and `package-lock.json`. The body of the pull request becomes the release note, so write it for users.
 2. Merge the pull request. `release.yml` creates the tag, and `prebuild.yml` builds and tests the package on each platform and stages the version on npm.
 3. Approve the `publish` job on GitHub, and then approve the staged version on npmjs.com with 2FA.
 4. Publish the draft GitHub Release that the `release` job created.
