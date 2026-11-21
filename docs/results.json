@@ -1,0 +1,178 @@
+{
+  "machine": {
+    "description": "a virtual machine",
+    "cpu": "AMD EPYC",
+    "smt": false,
+    "cpus": 16,
+    "memoryGiB": 31,
+    "os": "Linux",
+    "node": "v26.13.0"
+  },
+  "runs": 3,
+  "projects": [
+    {
+      "name": "readest",
+      "url": "https://github.com/readest/readest",
+      "workers": "whose config sets `maxWorkers: 4`",
+      "files": 1265,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 351.8,
+          "fastforks": 142.3,
+          "speedUp": 2.47
+        },
+        {
+          "cpus": 4,
+          "forks": 423.0,
+          "fastforks": 198.5,
+          "speedUp": 2.13
+        }
+      ]
+    },
+    {
+      "name": "Vuetify",
+      "url": "https://github.com/vuetifyjs/vuetify",
+      "files": 81,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 9.6,
+          "fastforks": 6.1,
+          "speedUp": 1.59
+        },
+        {
+          "cpus": 4,
+          "forks": 31.8,
+          "fastforks": 14.2,
+          "speedUp": 2.24
+        }
+      ]
+    },
+    {
+      "name": "Material UI",
+      "url": "https://github.com/mui/material-ui",
+      "files": 467,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 64.2,
+          "fastforks": 43.5,
+          "speedUp": 1.48
+        },
+        {
+          "cpus": 4,
+          "forks": 222.8,
+          "fastforks": 110.6,
+          "speedUp": 2.01
+        }
+      ]
+    },
+    {
+      "name": "Base UI",
+      "url": "https://github.com/mui/base-ui",
+      "files": 394,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 91.3,
+          "fastforks": 64.3,
+          "speedUp": 1.42
+        },
+        {
+          "cpus": 4,
+          "forks": 325.7,
+          "fastforks": 219.6,
+          "speedUp": 1.48
+        }
+      ]
+    },
+    {
+      "name": "MUI X",
+      "url": "https://github.com/mui/mui-x",
+      "files": 996,
+      "vitest": "5.0.5",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 420.8,
+          "fastforks": 306.7,
+          "speedUp": 1.37
+        },
+        {
+          "cpus": 4,
+          "forks": 1254.2,
+          "fastforks": 781.2,
+          "speedUp": 1.61
+        }
+      ]
+    },
+    {
+      "name": "Vitest",
+      "url": "https://github.com/vitest-dev/vitest",
+      "scope": "`test/unit`",
+      "files": 217,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 6.6,
+          "fastforks": 5.6,
+          "speedUp": 1.18
+        },
+        {
+          "cpus": 4,
+          "forks": 23.1,
+          "fastforks": 13.7,
+          "speedUp": 1.69
+        }
+      ]
+    },
+    {
+      "name": "Instructure UI",
+      "url": "https://github.com/instructure/instructure-ui",
+      "scope": "Node tests",
+      "files": 20,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 4.6,
+          "fastforks": 4.4,
+          "speedUp": 1.04
+        },
+        {
+          "cpus": 4,
+          "forks": 3.8,
+          "fastforks": 4.0,
+          "speedUp": 0.96
+        }
+      ]
+    },
+    {
+      "name": "js-test-runner-competition",
+      "url": "https://github.com/ubugeeei-reproductions/js-test-runner-competition",
+      "synthetic": true,
+      "files": 500,
+      "vitest": "5.1.0",
+      "results": [
+        {
+          "cpus": 16,
+          "forks": 29.1,
+          "fastforks": 11.1,
+          "speedUp": 2.62
+        },
+        {
+          "cpus": 4,
+          "forks": 109.3,
+          "fastforks": 31.9,
+          "speedUp": 3.43
+        }
+      ]
+    }
+  ]
+}
