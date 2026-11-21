@@ -49,7 +49,7 @@ for _ in $(seq 40); do pgrep -f "$HOSTS" >/dev/null || break; sleep 0.5; done
 left=$(pgrep -f "$HOSTS" | tr '\n' ' ')
 [ -n "$left" ] && kill -9 $left
 [ -f "$out/$label.json" ] && gzip -f "$out/$label.json"
-wall=$(awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')
+wall=$(LC_ALL=C awk -v a="$t0" -v b="$t1" 'BEGIN { printf "%.3f", b - a }')
 vitest=$(node -p "require('$(dirname "$VITEST_BIN")/package.json').version")
 printf '{"project":"%s","label":"%s","pool":"%s","cpus":"%s","exit":%d,"wall":%s,"killed":%d,"waitedIdle":%d,"vitest":"%s","start":"%s"}\n' \
   "$project" "$label" "$pool" "${CPUSET:-all}" "$code" "$wall" "$(echo $left | wc -w)" "$waited" "$vitest" "$start" \

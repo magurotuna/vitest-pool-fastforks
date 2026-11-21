@@ -2,13 +2,9 @@
 # test/x-license-compat) and the node projects. Without BROWSER=true, the root
 # config lists no browser projects. Vitest 5.0.5 from the lockfile.
 setup_mui_x() {
-  local d=$R/mui-x v
+  local d=$R/mui-x
   clone $d https://github.com/mui/mui-x.git 467d8deb3b22263a78746f2be1b40e17af819ce3
-  if [ ! -f $d/node_modules/vitest/package.json ]; then
-    v=$(pinned_pnpm $d)
-    need_pnpm $v
-    (cd $d && CI=true pnpmv $v install --frozen-lockfile)
-  fi
+  installed $d || install $d --frozen-lockfile
   config mui-x.vitest.bench.config.mts $d/vitest.bench.config.mts
   config mui-x.vitest.bench.shared.mts $d/vitest.bench.shared.mts
   # The root `test.pool` does not reach a project that is a separate config

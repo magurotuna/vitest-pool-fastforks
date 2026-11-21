@@ -4,7 +4,7 @@ setup_instructure_ui() {
   local d=$R/instructure-ui
   clone $d https://github.com/instructure/instructure-ui.git 83cae29e8004d669a8d3d662e3fa545b895ce242
   add_overrides $d/pnpm-workspace.yaml $VITEST_VERSION vitest @vitest/browser @vitest/browser-playwright @vitest/ui
-  has_vitest $d $VITEST_VERSION || install $d
+  installed $d || install $d
   # vitest.config.mts needs the es/ builds of ui-icons and ui-themes.
   [ -f $d/packages/ui-themes/es/index.js ] && [ -f $d/packages/ui-icons/es/index.js ] \
     || (cd $d && pnpmv "$(pinned_pnpm $d)" run bootstrap)

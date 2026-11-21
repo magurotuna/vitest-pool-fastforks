@@ -4,7 +4,7 @@ setup_material_ui() {
   local d=$R/material-ui
   clone $d https://github.com/mui/material-ui.git 403986ae957cea6959358fb8dbefc2178b62f2d5
   add_overrides $d/pnpm-workspace.yaml $VITEST_VERSION vitest @vitest/browser-playwright
-  has_vitest $d $VITEST_VERSION || install $d
+  installed $d || install $d
   config material-ui.vitest.bench.config.mts $d/vitest.bench.config.mts
 }
 proj_material_ui() {

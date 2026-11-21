@@ -8,7 +8,7 @@ setup_readest() {
     packages/simplecc-wasm packages/qcms)
   # @vitest/browser-webdriverio has no 5.1.0 release. It is for browser mode only.
   add_overrides $d/pnpm-workspace.yaml $VITEST_VERSION vitest @vitest/browser-playwright
-  has_vitest $a $VITEST_VERSION || install $d
+  installed $d || install $d
   # --configLoader runner does not define __dirname.
   sed -i "s|path.resolve(__dirname, |path.resolve('$a', |g" $a/vitest.config.mts
   config readest.vitest.bench.config.mts $a/vitest.bench.config.mts

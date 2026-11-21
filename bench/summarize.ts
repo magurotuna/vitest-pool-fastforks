@@ -8,6 +8,9 @@ import { gunzipSync } from 'node:zlib'
 
 interface Run {
   label: string
+  pool: string
+  /** `all`, or the CPU list of taskset. */
+  cpus: string
   exit: number
   wall: number
   vitest: string
@@ -72,6 +75,8 @@ for (const dir of dirs) {
   }
 }
 const projects = new Map([...latest].map(([key, dir]) => [key, project(dir, key)]))
+const missing = Object.keys(META).filter((key) => !projects.has(key))
+if (missing.length) console.error(`warning: no runs of ${missing.join(', ')}`)
 
 function project(dir: string, key: string): object {
   // A label that ran again has more than one line: the last one counts.
@@ -95,11 +100,18 @@ function project(dir: string, key: string): object {
         if (!run || run.exit > 1 || !existsSync(report)) {
           throw new Error(`${key} ${label}: ${run ? `exit code ${run.exit}` : 'no run'}`)
         }
+        // A run of the label by hand can have other conditions.
+        if (run.pool !== pool || (run.cpus === 'all') !== (cpus === 'all')) {
+          throw new Error(`${key} ${label}: ran with ${run.pool} and CPUs ${run.cpus}`)
+        }
         walls[pool]!.push(run.wall)
-        const { testResults } = JSON.parse(gunzipSync(readFileSync(report)).toString())
-        if (testResults.length === 0) throw new Error(`${key} ${label}: no test files ran`)
+        const { numTotalTests, testResults } = JSON.parse(gunzipSync(readFileSync(report)).toString())
+        if (numTotalTests === 0) throw new Error(`${key} ${label}: no tests ran`)
         files.add(testResults.length)
         for (const file of testResults) if (file.status === 'failed') failed[pool]!.add(file.name)
+        if (run.exit === 1 && !testResults.some((f: { status: string }) => f.status === 'failed')) {
+          console.error(`warning: ${key} ${label}: exit code 1, but no file failed (see ${label}.err)`)
+        }
       }
     }
     // The README says that both pools give the same results.

@@ -13,8 +13,7 @@ setup_js_test_runner_competition() {
     add_overrides $d/pnpm-workspace.yaml $VITEST_VERSION vitest @vitest/browser @vitest/browser-playwright \
       @vitest/browser-preview @vitest/ui
   fi
-  # The postinstall does not run again if an install stopped before it.
-  has_vitest $d $VITEST_VERSION && [ -d $d/fixture/tests/nomock ] || install $d
+  installed $d || install $d
   config js-test-runner-competition.vitest.bench.config.mts $d/vitest.bench.config.mts
 }
 proj_js_test_runner_competition() {

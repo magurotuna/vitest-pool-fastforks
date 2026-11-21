@@ -13,6 +13,10 @@ mkdir -p "$out"
 projects=("$@")
 [ ${#projects[@]} -gt 0 ] || projects=(mui-x readest material-ui vitest vuetify base-ui instructure-ui js-test-runner-competition)
 n=$BENCH/node_modules/vitest-pool-fastforks
+if [ -f "$out/machine.json" ] && [ "$(jq -r .commit "$out/machine.json")" != "$(cat "$n/COMMIT")" ]; then
+  echo "bench.sh: $out has runs of another build. Set RUN to a new name." >&2
+  exit 1
+fi
 cpu=$(LC_ALL=C lscpu)
 jq -n --arg model "$(sed -n 's/^Model name: *//p' <<< "$cpu")" --argjson cpus "$(nproc)" \
   --argjson threads "$(sed -n 's/^Thread(s) per core: *//p' <<< "$cpu")" \

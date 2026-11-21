@@ -5,7 +5,7 @@ setup_base_ui() {
   clone $d https://github.com/mui/base-ui.git cf696d6f6e08c699c5bda24d5a033430909f2285
   add_overrides $d/pnpm-workspace.yaml $VITEST_VERSION vitest @vitest/browser-playwright \
     @vitest/coverage-istanbul @vitest/ui
-  has_vitest $d $VITEST_VERSION || install $d
+  installed $d || install $d
   config base-ui.vitest.bench.config.mts $d/vitest.bench.config.mts
 }
 proj_base_ui() {

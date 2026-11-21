@@ -9,7 +9,7 @@ setup_vuetify() {
     add_overrides $d/pnpm-workspace.yaml $VITEST_VERSION vitest @vitest/browser @vitest/browser-playwright \
       @vitest/coverage-istanbul @vitest/ui
   fi
-  has_vitest $d $VITEST_VERSION || install $d
+  installed $d || install $d
   config vuetify.vitest.bench.config.mts $d/packages/vuetify/vitest.bench.config.mts
 }
 proj_vuetify() {
