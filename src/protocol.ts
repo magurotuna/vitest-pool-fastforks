@@ -23,6 +23,8 @@ export interface ControlMessage {
   id?: number
   /** In 'freed': the memory of the child process after it freed the Environment. */
   rss?: number
+  /** In 'create': see ModuleCache.since. */
+  since?: number
 }
 
 /** A message of Vitest between the main process and a test file. */
@@ -39,9 +41,6 @@ export interface ResolvedModule {
 export interface LoadedModule {
   format: string
   source: string
-  /** The change time, size, and inode of the file. */
-  id: string
-  path: string
 }
 
 /** The modules that all Environments of a child process share. */
@@ -49,7 +48,10 @@ export interface ModuleCache {
   getResolved(key: string): ResolvedModule | undefined
   setResolved(key: string, url: string, format: string | null | undefined): void
   getLoaded(url: string): LoadedModule | undefined
-  setLoaded(url: string, format: string, source: string, id: string): void
+  setLoaded(url: string, format: string, source: string): void
+  deleteLoaded(url: string): void
+  /** The start of the run, minus 2 seconds. A file that changed later is not kept. */
+  since: number
 }
 
 /** What the child process puts on the global object of an Environment. */

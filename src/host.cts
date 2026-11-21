@@ -3,7 +3,6 @@
 // main process are routed by worker id.
 import { appendFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { getHeapStatistics, setFlagsFromString } from 'node:v8'
 import { runInNewContext } from 'node:vm'
 import { splitNodeOptions } from './node-options.ts'
@@ -58,7 +57,9 @@ const moduleCache: Bridge['moduleCache'] = {
   getResolved: (key) => resolved.get(key),
   setResolved: (key, url, format) => void resolved.set(key, { url, format }),
   getLoaded: (url) => loaded.get(url),
-  setLoaded: (url, format, source, id) => void loaded.set(url, { format, source, id, path: fileURLToPath(url) }),
+  setLoaded: (url, format, source) => void loaded.set(url, { format, source }),
+  deleteLoaded: (url) => void loaded.delete(url),
+  since: 0,
 }
 
 const entry = join(__dirname, 'entry.cjs')
@@ -68,7 +69,12 @@ const LOAD = `return require('module').createRequire(${JSON.stringify(entry)})($
 
 const environments = new Map<number, Environment>()
 
-function create(id: number): void {
+function create(id: number, since: number): void {
+  // A new run, in watch mode.
+  if (since !== moduleCache.since) {
+    moduleCache.since = since
+    loaded.clear()
+  }
   const sid = addon.create(FLAGS, argv, execArgv)
   const s: Environment = { id, sid, deliver: undefined, queue: [] }
   const bridge: Bridge = {
@@ -194,7 +200,7 @@ if (options.cpu) {
 
 process.on('message', (m: ControlMessage | WorkerMessage) => {
   if ('__fastforks_ctl' in m) {
-    if (m.__fastforks_ctl === 'create') create(m.id!)
+    if (m.__fastforks_ctl === 'create') create(m.id!, m.since!)
     else if (m.__fastforks_ctl === 'free') free(m.id!)
     return
   }

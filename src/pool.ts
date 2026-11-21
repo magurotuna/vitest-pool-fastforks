@@ -30,6 +30,8 @@ interface Registry {
   /** The default memory limit of a child process. */
   memoryLimit: number
   closed: boolean
+  /** See ModuleCache.since in protocol.ts. */
+  since: number
 }
 
 interface SharedState {
@@ -82,14 +84,14 @@ export class Host {
   }
 
   /** Sends a control message and waits for the reply with the same id. */
-  request(type: ControlType, id: number, reply: ControlType): Promise<ControlMessage> {
+  request(type: ControlType, id: number, reply: ControlType, since?: number): Promise<ControlMessage> {
     const replied = this.waitFor(reply, id)
     if (this.exited) return replied
     // The send fails if the child process closed its channel but did not exit
     // yet (EPIPE on Windows). With a callback, the error rejects the request
     // instead of becoming an 'error' event of the child process.
     const failed = new Promise<never>((_, reject) => {
-      this.child.send({ __fastforks_ctl: type, id } satisfies ControlMessage, (error) => {
+      this.child.send({ __fastforks_ctl: type, id, since } satisfies ControlMessage, (error) => {
         if (error) reject(error)
       })
     })
@@ -273,10 +275,16 @@ function getRegistry(options: PoolOptions): Registry {
       limit: 2 * workers,
       memoryLimit: memory / workers,
       closed: false,
+      // 2 seconds before the start: a file system can have a coarse clock.
+      since: Date.now() - 2000,
     }
     registries.set(vitest, created)
     // A program can close Vitest and start it again in the same process.
     vitest.onClose(() => closeRegistry(created))
+    // In watch mode, check the files in node_modules again for each run.
+    vitest.onTestsRerun(() => {
+      created.since = Date.now() - 2000
+    })
     registry = created
   }
   return registry
@@ -393,7 +401,7 @@ export class FastForksPoolWorker implements PoolWorker {
     // While a test file runs, the main process waits for the child process.
     setRef(host.child, true)
     this.host = host
-    await host.request('create', this.id, 'created')
+    await host.request('create', this.id, 'created', host.registry.since)
   }
 
   async stop(): Promise<void> {
