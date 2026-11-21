@@ -43,6 +43,8 @@ export interface ResolvedModule {
 export interface LoadedModule {
   format: string
   source: string
+  /** The inode and the change time of the file that was read. */
+  file: string
 }
 
 /** The modules that all Environments of a child process share. */
@@ -50,7 +52,7 @@ export interface ModuleCache {
   getResolved(key: string): ResolvedModule | undefined
   setResolved(key: string, url: string, format: string | null | undefined): void
   getLoaded(url: string): LoadedModule | undefined
-  setLoaded(url: string, format: string, source: string): void
+  setLoaded(url: string, format: string, source: string, file: string): void
   /** 2 seconds before the main process started. A file that changed later is not kept. */
   since: number
 }

@@ -57,7 +57,7 @@ const moduleCache: Bridge['moduleCache'] = {
   getResolved: (key) => resolved.get(key),
   setResolved: (key, url, format) => void resolved.set(key, { url, format }),
   getLoaded: (url) => loaded.get(url),
-  setLoaded: (url, format, source) => void loaded.set(url, { format, source }),
+  setLoaded: (url, format, source, file) => void loaded.set(url, { format, source, file }),
   since: options.since,
 }
 let run = 0

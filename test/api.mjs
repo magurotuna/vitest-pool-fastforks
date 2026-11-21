@@ -1,7 +1,7 @@
 // Runs Vitest through its API with each pool, as a program can: a run, a
 // collect, and two more runs, with a change in node_modules (a source, and an
-// export of a package) before each of the last two runs. Each run must get the
-// files as they are on disk.
+// export of a package) before each step after the first. Each step must get
+// the files as they are on disk.
 //
 // Usage: node test/api.mjs [--pools a,b]
 import { spawnSync } from 'node:child_process'
@@ -17,25 +17,21 @@ const { values, positionals } = parseArgs({
 })
 const root = dirname(fileURLToPath(import.meta.url))
 
-const TEST = `import { readFileSync } from "node:fs"
-import { createRequire } from "node:module"
-import { expect, test } from "vitest"
+// The name of the test has what the file got, so a collect shows it too.
+const TEST = `import { createRequire } from "node:module"
+import { test } from "vitest"
 
 const require = createRequire(import.meta.url)
-// At the top level, so that a collect loads them too.
-const actual = { dep: require("dep"), outer: require("outer") }
-
-test("gets the files in node_modules as they are on disk", () => {
-  expect(actual).toEqual(JSON.parse(readFileSync(new URL("./expected.json", import.meta.url), "utf8")))
-})
+test(\`got \${JSON.stringify({ dep: require("dep"), outer: require("outer") })}\`, () => {})
 `
+// Step 1 is a run, step 2 a collect, and steps 3 and 4 are runs.
+const STEPS = [1, 2, 3, 4]
+const outer = (step) => (step % 2 === 0 ? 'b' : 'a')
 
-// Step 1 before Vitest starts, steps 2 and 3 before the last two runs.
+// Step 1 before Vitest starts, the other steps before Vitest runs them.
 function write(dir, step) {
-  const pkg = step % 2 === 0 ? 'b' : 'a'
   writeFileSync(join(dir, 'node_modules/dep/index.cjs'), `module.exports = ${step}\n`)
-  writeFileSync(join(dir, 'node_modules/pkg/package.json'), JSON.stringify({ exports: `./${pkg}.cjs` }))
-  writeFileSync(join(dir, 'expected.json'), JSON.stringify({ dep: step, outer: pkg }))
+  writeFileSync(join(dir, 'node_modules/pkg/package.json'), JSON.stringify({ exports: `./${outer(step)}.cjs` }))
 }
 
 if (values.child) {
@@ -46,29 +42,36 @@ if (values.child) {
     root: dir,
     config: false,
     watch: false,
-    reporters: [],
+    // Not []: Vitest 4 then uses its default reporter, which needs start().
+    reporters: [{}],
     maxWorkers: 1,
     pool: values.child === 'fastforks' ? fastForks({ fallback: 'error' }) : values.child,
   })
   const specs = await vitest.globTestSpecifications()
-  const failed = []
-  for (const step of [1, 2, 3]) {
-    // After the first run, the child processes are warm, so the workers of the
-    // collect can still be stopping when the next run starts.
-    if (step === 2) await vitest.collectTests(specs)
+  const steps = []
+  // After the first run, the child processes are warm, so the workers of the
+  // collect can still be stopping when the next run starts.
+  for (const step of STEPS) {
     if (step > 1) write(dir, step)
-    const { testModules } = await vitest.runTestSpecifications(specs)
-    const bad = testModules.filter((m) => !m.ok())
-    for (const m of bad) {
-      const errors = [...m.children.allTests()].flatMap((t) => t.result().errors ?? [])
-      console.error(`run ${step}: ${m.moduleId}: ${errors.map((e) => e.message).join('\n')}`)
-    }
-    failed.push(bad.length)
+    const collect = step === 2
+    const { testModules, unhandledErrors } = collect
+      ? await vitest.collectTests(specs)
+      : await vitest.runTestSpecifications(specs)
+    const tests = testModules.flatMap((m) => [...m.children.allTests()])
+    steps.push([
+      ...tests.map((t) => `${t.name}: ${collect ? 'collected' : t.result().state}`).sort(),
+      ...unhandledErrors.map((error) => `error: ${error.message}`),
+    ])
   }
   await vitest.close()
-  console.log(JSON.stringify(failed))
+  console.log(JSON.stringify(steps))
 } else {
   const pools = values.pools.split(',')
+  const expected = JSON.stringify(
+    STEPS.map((step) =>
+      Array(4).fill(`got {"dep":${step},"outer":"${outer(step)}"}: ${step === 2 ? 'collected' : 'passed'}`),
+    ),
+  )
   let failed = false
   for (const pool of pools) {
     const dir = join(root, 'fixtures', `.api-${pool}`)
@@ -87,13 +90,14 @@ if (values.child) {
     await delay(2100)
     const child = spawnSync(process.execPath, [fileURLToPath(import.meta.url), '--child', pool, dir], {
       encoding: 'utf8',
+      timeout: 120_000,
     })
     const result = child.stdout.trim().split('\n').at(-1)
-    console.log(`${pool}: failed test files in each run: ${result}`)
-    if (child.status !== 0 || result !== '[0,0,0]') {
-      console.log(child.stderr)
-      failed = true
-    }
+    const ok = child.status === 0 && result === expected
+    console.log(
+      `${pool}: ${ok ? 'each step got the files on disk' : `got ${result}\nexpected ${expected}\n${child.stderr}`}`,
+    )
+    failed ||= !ok
     rmSync(dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 250 })
   }
   console.log(`${failed ? 'FAIL' : 'same'} api (${pools.join(' vs ')})`)
