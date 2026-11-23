@@ -21,9 +21,7 @@
   },
   "files": [
     "dist",
-    "prebuilds",
-    "addon",
-    "binding.gyp"
+    "prebuilds"
   ],
   "type": "module",
   "exports": {
