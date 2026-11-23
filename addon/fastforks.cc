@@ -7,6 +7,7 @@
 #include <uv.h>
 #include <v8.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -127,8 +128,29 @@ void Global(const FunctionCallbackInfo<Value>& args) {
 // deleted: at a normal exit, Node.js disposes the isolate before C++ destroys
 // global objects, and a v8::Global must not be destroyed after its isolate is
 // disposed.
-std::vector<v8::Global<Context>>& freed_contexts =
-    *new std::vector<v8::Global<Context>>();
+struct FreedContext {
+  v8::Global<Context> context;
+  // The number of young-generation GCs before the Environment was freed.
+  uint64_t young_gcs_at_free;
+};
+std::vector<FreedContext>& freed_contexts = *new std::vector<FreedContext>();
+
+// The number of young-generation GCs so far. See OnGCEpilogue().
+uint64_t young_gc_count = 0;
+
+// A young-generation GC can find dead objects only in the young generation.
+// An object moves to the old generation when it survives its second
+// young-generation GC. So if no JavaScript runs in a context after its
+// Environment is freed, the context has no young objects after two more
+// young-generation GCs. Check one more GC than that, in case V8 could not
+// move an object.
+//
+// This does not cover two cases. If code of a later file adds a target to a
+// registry of a freed file (the pool gives a file no way to get objects of an
+// earlier file, but a native addon could), the GC can find the target dead
+// after these GCs. And the list has only the main context of each
+// Environment, not the contexts that the file made with node:vm.
+constexpr uint64_t kYoungGCsWithYoungObjects = 3;
 
 // Tells V8 that the context goes away, as a browser does for a page. V8 then
 // drops the maps that it keeps alive for the context (without this, a normal
@@ -140,22 +162,59 @@ void DisposeContext(Isolate* isolate, Local<Context> context) {
   isolate->ContextDisposedNotification(v8::ContextDependants::kSomeDependants);
 }
 
+// Drops the queued FinalizationRegistry callbacks of the freed contexts that
+// the GC did not collect yet. If only_young is true, it drops only the
+// callbacks of the contexts that can still have objects in the young
+// generation.
+void DisposeFreedContexts(Isolate* isolate, bool only_young) {
+  v8::HandleScope handle_scope(isolate);
+  std::erase_if(freed_contexts,
+                [](const FreedContext& c) { return c.context.IsEmpty(); });
+  for (const FreedContext& freed : freed_contexts) {
+    if (only_young &&
+        young_gc_count - freed.young_gcs_at_free > kYoungGCsWithYoungObjects) {
+      continue;
+    }
+    DisposeContext(isolate, freed.context.Get(isolate));
+  }
+}
+
+// A freed context lives until a full GC collects it, and so do its
+// FinalizationRegistries. A GC before that can find dead objects of the
+// context and queue the callbacks of its registries. V8 runs these callbacks
+// in a task, with the freed context as the current context, and Node.js
+// finds no Environment for that context. If a callback calls into Node.js,
+// the process crashes with SIGSEGV. For example, the registry of
+// AbortSignal.timeout() calls clearTimeout(), which calls into Node.js if an
+// async_hooks destroy hook is enabled (node:test enables one). So drop the
+// queued callbacks after the GC, before the task runs.
+//
+// Each drop also flushes the queues of the concurrent optimizing compilers,
+// and posts a task that can start another young-generation GC (see
+// Isolate::ContextDisposedNotification()). So after a young-generation GC,
+// drop only the callbacks of the contexts that can have young objects. This
+// also ends the chain of GCs that the tasks start.
+void OnGCEpilogue(Isolate* isolate,
+                  v8::GCType type,
+                  v8::GCCallbackFlags,
+                  void*) {
+  const bool young = type != v8::kGCTypeMarkSweepCompact;
+  if (young) young_gc_count++;
+  if (!freed_contexts.empty()) DisposeFreedContexts(isolate, young);
+}
+
 // Call this only outside uv_run() (see Deferred below).
 void FreeNow(Isolate* isolate, node::Environment* env) {
+  // FreeEnvironment() below can run queued tasks, such as these callbacks.
+  // Drop them first.
+  DisposeFreedContexts(isolate, false);
   {
     v8::HandleScope handle_scope(isolate);
-    // A context of an earlier file lives until the next full GC. A minor GC
-    // before that can still queue its FinalizationRegistry callbacks, and
-    // FreeEnvironment() below runs queued callbacks. Drop them first.
-    std::erase_if(freed_contexts,
-                  [](const v8::Global<Context>& c) { return c.IsEmpty(); });
-    for (const v8::Global<Context>& freed : freed_contexts) {
-      DisposeContext(isolate, freed.Get(isolate));
-    }
     Local<Context> context = node::GetMainContext(env);
     DisposeContext(isolate, context);
-    freed_contexts.emplace_back(isolate, context);
-    freed_contexts.back().SetWeak();
+    freed_contexts.push_back(
+        {v8::Global<Context>(isolate, context), young_gc_count});
+    freed_contexts.back().context.SetWeak();
   }
   node::FreeEnvironment(env);
 }
@@ -226,6 +285,14 @@ Deferred* GetDeferred(Isolate* isolate) {
       node::GetMultiIsolatePlatform(host)->GetForegroundTaskRunner(isolate);
   uv_idle_init(deferred->loop, &deferred->idle);
   uv_check_init(deferred->loop, &deferred->check);
+  // Scavenges and mark-compact GCs can queue FinalizationRegistry callbacks.
+  // Minor mark-sweep GCs (--minor-ms) do not in Node.js 26, but the callback
+  // also counts them as young-generation GCs, in case a later V8 does.
+  isolate->AddGCEpilogueCallback(
+      OnGCEpilogue,
+      nullptr,
+      static_cast<v8::GCType>(v8::kGCTypeScavenge | v8::kGCTypeMinorMarkSweep |
+                              v8::kGCTypeMarkSweepCompact));
   return deferred;
 }
 
