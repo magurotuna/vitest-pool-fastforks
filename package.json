@@ -31,7 +31,7 @@
     }
   },
   "scripts": {
-    "build": "node-gyp rebuild",
+    "build": "node scripts/build-addon.ts",
     "build:js": "vp pack",
     "prepack": "vp pack",
     "check": "vp check",
