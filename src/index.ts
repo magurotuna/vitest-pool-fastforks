@@ -25,9 +25,12 @@ export interface FastForksOptions {
    * A child process runs many test files, one after another. When its
    * memory (RSS) after a test file is above this limit, the pool stops it and
    * starts a new one. Bytes, or a percentage of the system memory such as
-   * `'10%'`.
-   * @default the system memory (half of it in watch mode) divided by the
-   * number of workers, as Vitest's `vmMemoryLimit`
+   * `'10%'`. Apart from this limit, the pool also stops a child process when
+   * its JavaScript heap, with garbage that the GC did not collect yet, uses
+   * more than half of the heap limit of V8 (`heap_size_limit`).
+   * @default the system memory, or the memory limit that Node.js reports for
+   * the process (`process.constrainedMemory()`) if it is lower (half of it in
+   * watch mode), divided by the number of workers
    */
   memoryLimit?: number | string
   /**

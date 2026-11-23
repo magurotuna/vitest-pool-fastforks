@@ -10,6 +10,7 @@ import type { Readable, Writable } from 'node:stream'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import type { PoolOptions, PoolWorker, WorkerRequest } from 'vitest/node'
 import type { ControlMessage, ControlType, HostOptions, WorkerMessage } from './protocol.ts'
+import { availableMemory, overMemoryLimit } from './memory-limit.ts'
 import { canUseSnapshotBlob, discardSnapshotBlob, getSnapshotBlob } from './snapshot.ts'
 
 export interface PoolContext {
@@ -270,8 +271,8 @@ async function startHost(options: PoolOptions, context: PoolContext, key: string
   }
 }
 
-// The default memory limit of a child process is the one that Vitest uses for
-// the workers of vmForks and vmThreads.
+// The default memory limit of a child process is like the one that Vitest uses
+// for the workers of vmForks and vmThreads.
 function getRegistry(options: PoolOptions): Registry {
   const vitest = options.project.vitest
   let registry = registries.get(vitest)
@@ -280,7 +281,7 @@ function getRegistry(options: PoolOptions): Registry {
   if (!registry || registry.closed) {
     const { maxWorkers, watch } = vitest.config
     const workers = Number.isFinite(maxWorkers) && maxWorkers > 0 ? maxWorkers : availableParallelism()
-    const memory = (process.constrainedMemory?.() || totalmem()) / (watch ? 2 : 1)
+    const memory = availableMemory(process.constrainedMemory?.(), totalmem()) / (watch ? 2 : 1)
     const created: Registry = {
       hosts: new Set(),
       idle: [],
@@ -399,12 +400,16 @@ function notifyWaiters(registry: Registry): void {
   for (const waiter of registry.waiters.splice(0)) waiter()
 }
 
-function releaseHost(host: Host, rss: number, memoryLimit: number | undefined): void {
+function releaseHost(host: Host, freed: ControlMessage, memoryLimit: number | undefined): void {
   const { registry } = host
   // Memory that a test file allocated outside the JavaScript heap, or that
-  // V8 does not give back, stays in the child process. Start a new one when
-  // it gets large, as a fork would.
-  if (registry.closed || rss > (memoryLimit ?? registry.memoryLimit) || registry.hosts.size > registry.limit) {
+  // V8 does not give back, stays in the child process. So does a leak in the
+  // JavaScript heap. Start a new one when it gets large, as a fork would.
+  if (
+    registry.closed ||
+    overMemoryLimit(freed, memoryLimit ?? registry.memoryLimit) ||
+    registry.hosts.size > registry.limit
+  ) {
     registry.hosts.delete(host)
     killHost(host)
   } else {
@@ -489,7 +494,7 @@ export class FastForksPoolWorker implements PoolWorker {
     if (freed) {
       host.files++
       // The limit of this file's project: projects can set different limits.
-      releaseHost(host, freed.rss ?? 0, this.context.memoryLimit)
+      releaseHost(host, freed, this.context.memoryLimit)
     }
     await exitAfterClose(host)
   }

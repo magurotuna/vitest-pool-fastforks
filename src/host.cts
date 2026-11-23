@@ -211,7 +211,13 @@ function replyFreed(id: number): void {
   } else {
     collectGarbage()
   }
-  reply({ __fastforks_ctl: 'freed', id, rss: process.memoryUsage.rss() })
+  const heap = getHeapStatistics()
+  reply({
+    __fastforks_ctl: 'freed',
+    id,
+    rss: process.memoryUsage.rss(),
+    heap: { used: heap.used_heap_size, limit: heap.heap_size_limit },
+  })
 }
 
 function reply(message: ControlMessage): void {
