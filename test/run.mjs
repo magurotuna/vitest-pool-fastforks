@@ -108,7 +108,10 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
     // The pool starts a file again in a new child process if an earlier file
     // crashed the child process, so the results can be the same after a
     // crash. Only the crash-on-create fixture crashes on purpose.
-    if (name !== 'crash-on-create' && /before the next file started/.test(results[pool].stdout + results[pool].stderr)) {
+    if (
+      name !== 'crash-on-create' &&
+      /before the next file started/.test(results[pool].stdout + results[pool].stderr)
+    ) {
       diff.push(`${pool}: a child process exited unexpectedly`)
     }
     const summary = `${results[pool].files ? Object.keys(results[pool].files).length : 0} files, exit ${results[base].code}/${results[pool].code}`
