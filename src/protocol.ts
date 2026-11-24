@@ -13,6 +13,8 @@ export interface HostOptions {
   inspector: boolean
   /** Measurement only: a path prefix for the CPU time of the process. */
   cpu: string | undefined
+  /** See ModuleCache.since. */
+  since: number
 }
 
 export type ControlType = 'ready' | 'create' | 'created' | 'free' | 'freed'
@@ -23,6 +25,8 @@ export interface ControlMessage {
   id?: number
   /** In 'freed': the memory of the child process after it freed the Environment. */
   rss?: number
+  /** In 'create': the run. A child process clears its module cache when it changes. */
+  run?: number
 }
 
 /** A message of Vitest between the main process and a test file. */
@@ -39,8 +43,8 @@ export interface ResolvedModule {
 export interface LoadedModule {
   format: string
   source: string
-  /** The change time, size, and inode of the file. */
-  id: string
+  /** The inode and the change time of the file that was read. */
+  file: string
 }
 
 /** The modules that all Environments of a child process share. */
@@ -48,7 +52,9 @@ export interface ModuleCache {
   getResolved(key: string): ResolvedModule | undefined
   setResolved(key: string, url: string, format: string | null | undefined): void
   getLoaded(url: string): LoadedModule | undefined
-  setLoaded(url: string, format: string, source: string, id: string): void
+  setLoaded(url: string, format: string, source: string, file: string): void
+  /** 2 seconds before the main process started. A file that changed later is not kept. */
+  since: number
 }
 
 /** What the child process puts on the global object of an Environment. */

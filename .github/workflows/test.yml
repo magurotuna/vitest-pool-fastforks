@@ -56,6 +56,7 @@ jobs:
       - run: npm run build
       - run: npm test -- --out results
       - run: node test/watch.mjs
+      - run: node test/api.mjs
       - run: node test/close.mjs
       - run: node test/addon.mjs
       - if: always()
@@ -93,6 +94,7 @@ jobs:
       - run: npm run build
       - run: npm test -- --out results
       - run: node test/watch.mjs
+      - run: node test/api.mjs
       - run: node test/close.mjs
 
   # On a Node.js or a Vitest that is too old, the pool prints a warning and

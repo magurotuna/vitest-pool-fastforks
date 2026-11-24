@@ -6,7 +6,8 @@
 // Without fixtures, runs all of them. The fixtures run with
 // `fallback: 'error'`, so a run that cannot use this pool fails.
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { setTimeout as delay } from 'node:timers/promises'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -37,6 +38,27 @@ const FIXTURES = {
   'coverage-istanbul': ['coverage', ['--maxWorkers=1', '--coverage.enabled', '--coverage.provider=istanbul']],
 }
 
+// Runs before Vitest starts with each pool.
+const BEFORE = {
+  // Files in node_modules that exist before Vitest starts. This pool keeps a
+  // file that did not change in the 2 seconds before, so wait longer.
+  changing: async (dir) => {
+    const generated = join(dir, 'generated')
+    for (const name of ['node_modules/existing', 'node_modules/moved', 'moved-old', 'staged']) {
+      rmSync(join(generated, name), { recursive: true, force: true })
+    }
+    for (const [file, value] of [
+      ['node_modules/existing/index.cjs', 'old'],
+      ['node_modules/moved/index.cjs', 'old'],
+      ['staged/index.cjs', 'new'],
+    ]) {
+      mkdirSync(dirname(join(generated, file)), { recursive: true })
+      writeFileSync(join(generated, file), `module.exports = "${value}"\n`)
+    }
+    await delay(2100)
+  },
+}
+
 const { values, positionals } = parseArgs({
   allowPositionals: true,
   options: { out: { type: 'string' }, pools: { type: 'string', default: 'forks,fastforks' } },
@@ -53,6 +75,7 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
   mkdirSync(dir, { recursive: true })
   const results = {}
   for (const pool of pools) {
+    await BEFORE[name]?.(join(root, 'fixtures', fixture))
     const report = join(dir, `${pool}.json`)
     const run = spawnSync(
       process.execPath,

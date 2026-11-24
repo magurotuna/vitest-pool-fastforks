@@ -8,3 +8,11 @@ test("requires the file that it wrote (2)", () => {
   writeFileSync(new URL("./generated/value.cjs", import.meta.url), "module.exports = 2\n")
   expect(createRequire(import.meta.url)("./generated/value.cjs")).toBe(2)
 })
+
+// The pool keeps no file in node_modules that changed after Vitest started.
+test("requires the package in node_modules that it wrote (2)", () => {
+  const dir = new URL("./generated/node_modules/shared/", import.meta.url)
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(new URL("index.cjs", dir), "module.exports = 2\n")
+  expect(createRequire(import.meta.url)("./generated/node_modules/shared/index.cjs")).toBe(2)
+})

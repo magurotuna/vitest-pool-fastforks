@@ -30,6 +30,10 @@ interface Registry {
   /** The default memory limit of a child process. */
   memoryLimit: number
   closed: boolean
+  /** From the first test file of a run until the run ends. See attach(). */
+  inRun: boolean
+  /** Increases at the start of each run. */
+  run: number
 }
 
 interface SharedState {
@@ -82,14 +86,14 @@ export class Host {
   }
 
   /** Sends a control message and waits for the reply with the same id. */
-  request(type: ControlType, id: number, reply: ControlType): Promise<ControlMessage> {
+  request(type: ControlType, id: number, reply: ControlType, run?: number): Promise<ControlMessage> {
     const replied = this.waitFor(reply, id)
     if (this.exited) return replied
     // The send fails if the child process closed its channel but did not exit
     // yet (EPIPE on Windows). With a callback, the error rejects the request
     // instead of becoming an 'error' event of the child process.
     const failed = new Promise<never>((_, reject) => {
-      this.child.send({ __fastforks_ctl: type, id } satisfies ControlMessage, (error) => {
+      this.child.send({ __fastforks_ctl: type, id, run } satisfies ControlMessage, (error) => {
         if (error) reject(error)
       })
     })
@@ -129,6 +133,8 @@ function spawnHost(
     argv1: resolve(options.distPath, 'workers/forks.js'),
     inspector: needsInspector(options, context),
     cpu: process.env.VITEST_POOL_FASTFORKS_CPU,
+    // 2 seconds earlier: a file system can have a coarse clock.
+    since: performance.timeOrigin - 2000,
   }
   const child = fork(hostScript, [], {
     execArgv: [...(blob ? ['--snapshot-blob', blob] : []), ...options.execArgv],
@@ -273,6 +279,8 @@ function getRegistry(options: PoolOptions): Registry {
       limit: 2 * workers,
       memoryLimit: memory / workers,
       closed: false,
+      inRun: false,
+      run: 0,
     }
     registries.set(vitest, created)
     // A program can close Vitest and start it again in the same process.
@@ -393,7 +401,19 @@ export class FastForksPoolWorker implements PoolWorker {
     // While a test file runs, the main process waits for the child process.
     setRef(host.child, true)
     this.host = host
-    await host.request('create', this.id, 'created')
+    // A new run (or collect), for example in watch mode or through the Vitest
+    // API. Vitest has no event for it, but every test file of a run starts
+    // before waitForTestRunEnd() resolves. Two runs that overlap count as one.
+    const { registry } = host
+    if (!registry.inRun) {
+      registry.inRun = true
+      registry.run++
+      const end = (): void => {
+        registry.inRun = false
+      }
+      void this.options.project.vitest.waitForTestRunEnd().then(end, end)
+    }
+    await host.request('create', this.id, 'created', registry.run)
   }
 
   async stop(): Promise<void> {

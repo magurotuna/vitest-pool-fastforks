@@ -28,13 +28,14 @@ const startsWith = uncurryThis(String.prototype.startsWith)
 const includes = uncurryThis(String.prototype.includes)
 const arrayJoin = uncurryThis(Array.prototype.join)
 const arrayFind = uncurryThis(Array.prototype.find)
+const setHas = uncurryThis(Set.prototype.has)
+const setAdd = uncurryThis(Set.prototype.add)
 const decode = uncurryThis(TextDecoder.prototype.decode)
 const decoder = new TextDecoder()
 const { stringify } = JSON
 const clone = structuredClone
 const stat = statSync
 const toPath = fileURLToPath
-const { now } = Date
 /* oxlint-enable typescript/unbound-method */
 
 // Every Environment starts with empty module caches, so Node.js would resolve
@@ -45,18 +46,21 @@ const { now } = Date
 // can write a file and require it, and a linked package can be rebuilt
 // between runs in watch mode.
 const cache = bridge.moduleCache
-// A file in node_modules can change too, so a source is used only while the
-// file has the same change time, size, and inode. A file that changed in the
-// last 2 seconds is not kept: it can change again within one tick of the file
-// system clock and keep the same identity.
+// A file in node_modules can change too. The cache keeps a file only if it
+// did not change after the main process started, and each run starts with an
+// empty cache. So a file that a test writes is read from disk each time. If an
+// Environment loads a file a second time, for example after a test removed it
+// from a module cache, the pool checks that the file is still the kept one.
+// Returns the inode and the change time of a file that did not change.
 const identify = (url: string): string | undefined => {
   try {
-    const s = stat(toPath(url))
-    return now() - s.ctimeMs < 2000 ? undefined : `${s.ctimeMs}:${s.size}:${s.ino}`
+    const { ino, ctimeMs } = stat(toPath(url))
+    return ctimeMs < cache.since ? `${ino} ${ctimeMs}` : undefined
   } catch {
     return undefined
   }
 }
+const loadedHere = new Set<string>()
 const inNodeModules = (url: string | undefined): boolean =>
   url !== undefined && startsWith(url, 'file:') && includes(url, '/node_modules/')
 registerHooks({
@@ -73,19 +77,23 @@ registerHooks({
   },
   load(url, context, nextLoad) {
     if (!inNodeModules(url)) return nextLoad(url, context)
-    const id = identify(url)
+    const again = setHas(loadedHere, url)
+    setAdd(loadedHere, url)
     const hit = cache.getLoaded(url)
-    if (hit !== undefined && id !== undefined && hit.id === id) {
+    if (hit !== undefined && (!again || identify(url) === hit.file)) {
       return { format: hit.format, source: hit.source, shortCircuit: true }
     }
     const result = nextLoad(url, context)
     // A .js file without a "type" in its package.json has no format yet, and
-    // the CommonJS loader handles JSON itself; neither is cached.
+    // the CommonJS loader handles JSON itself; neither is cached. The check
+    // runs after the read, so that a change during the read is not kept.
     const format = result.format
-    if (id !== undefined && (format === 'module' || format === 'commonjs') && result.source != null) {
+    if ((format === 'module' || format === 'commonjs') && result.source != null) {
+      const file = identify(url)
+      if (file === undefined) return result
       // A string, not this realm's Buffer.
       const source = typeof result.source === 'string' ? result.source : decode(decoder, result.source as Uint8Array)
-      cache.setLoaded(url, format, source, id)
+      cache.setLoaded(url, format, source, file)
     }
     return result
   },

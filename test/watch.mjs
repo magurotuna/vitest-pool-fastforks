@@ -1,6 +1,6 @@
-// Starts Vitest in watch mode with each pool, changes a source file and a
-// file that a test requires, and checks that every rerun reports the same
-// result as with forks.
+// Starts Vitest in watch mode with each pool, changes a source file, a file
+// that a test requires, and a file in node_modules, and checks that every
+// rerun reports the same result as with forks.
 //
 // Usage: node test/watch.mjs [--pools a,b]
 import { spawn } from 'node:child_process'
@@ -17,9 +17,9 @@ const vitest = join(dirname(createRequire(import.meta.url).resolve('vitest/packa
 // [[file to write, content], ...], and the summary line that the run after
 // the writes prints. Vitest reruns only the affected test files, and it does
 // not watch files that a test reads with require(), so the steps that change
-// lib/required.cjs also change the test file.
+// lib/required.cjs or node_modules also change the test file.
 const STEPS = [
-  [[], 'Tests  2 passed'],
+  [[], 'Tests  3 passed'],
   [[['src/value.ts', 'export const value = 2\n']], 'Tests  1 failed'],
   [[['src/value.ts', 'export const value = 1\n']], 'Tests  1 passed'],
   [
@@ -36,6 +36,16 @@ const STEPS = [
     ],
     'Tests  1 passed',
   ],
+  // The first run keeps the file in the child process, and the next run must
+  // read it again.
+  [[['modules.test.ts', modulesTest(1)]], 'Tests  1 passed'],
+  [
+    [
+      ['node_modules/watched/index.cjs', 'module.exports = 2\n'],
+      ['modules.test.ts', modulesTest(2)],
+    ],
+    'Tests  1 passed',
+  ],
 ]
 
 function requiredTest(step) {
@@ -45,6 +55,17 @@ import { expect, test } from "vitest"
 // step ${step}
 test("required", () => {
   expect(createRequire(import.meta.url)("./lib/required.cjs")).toBe(1)
+})
+`
+}
+
+function modulesTest(value) {
+  return `import { createRequire } from "node:module"
+import { expect, test } from "vitest"
+
+// value ${value}
+test("node_modules", () => {
+  expect(createRequire(import.meta.url)("./node_modules/watched/index.cjs")).toBe(${value})
 })
 `
 }
@@ -70,7 +91,14 @@ async function run(pool) {
   rmSync(dir, { recursive: true, force: true })
   cpSync(join(root, 'fixtures', 'watch'), dir, { recursive: true })
   mkdirSync(join(dir, 'lib'), { recursive: true })
-  const child = spawn(process.execPath, [vitest, '--configLoader', 'runner', '--watch'], {
+  // This pool keeps a file in node_modules that did not change in the 2
+  // seconds before Vitest started, so wait longer.
+  mkdirSync(join(dir, 'node_modules', 'watched'), { recursive: true })
+  writeFileSync(join(dir, 'node_modules', 'watched', 'index.cjs'), 'module.exports = 1\n')
+  await new Promise((resolve) => setTimeout(resolve, 2100))
+  // One worker. The pool reuses the child process that finished last, so a
+  // run of one test file uses the child process of the run before.
+  const child = spawn(process.execPath, [vitest, '--configLoader', 'runner', '--watch', '--maxWorkers=1'], {
     cwd: dir,
     env: { ...process.env, POOL: pool, FASTFORKS_FALLBACK: 'error', CI: '' },
     stdio: ['pipe', 'pipe', 'pipe'],
