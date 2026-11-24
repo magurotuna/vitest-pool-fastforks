@@ -4,7 +4,7 @@
 // crash, so the cache key also has the binary's path, size, and mtime.
 import { execFile } from 'node:child_process'
 import { createHash } from 'node:crypto'
-import { existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync } from 'node:fs'
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync } from 'node:fs'
 import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -108,18 +108,62 @@ function cacheKey(): string {
 }
 
 function cacheDir(): string {
-  let user = 'user'
-  try {
-    user = String(userInfo().uid >= 0 ? userInfo().uid : userInfo().username)
-  } catch {}
-  return join(tmpdir(), `vitest-pool-fastforks-${user}`)
+  // userInfo() throws for a user ID without a passwd entry, as in some
+  // containers. So use the user name only on Windows, which has no user IDs.
+  let user = String(process.geteuid?.() ?? 'user')
+  if (!process.geteuid) {
+    try {
+      user = userInfo().username
+    } catch {}
+  }
+  return join(tmpdir(), `vitest-pool-fastforks-snapshot-${user}`)
 }
 
-async function build(): Promise<string> {
+/**
+ * Returns whether the pool can keep the blob in this directory, and makes the
+ * directory if it does not exist. A child process runs the code in the blob,
+ * so another user must not be able to write to the directory: on a system
+ * with a shared temporary directory, that user could put a blob there, or
+ * replace one, and run code as the current user. This assumes a temporary
+ * directory like /tmp, which root owns and which has the sticky bit, so that
+ * another user cannot rename the directory after the check.
+ */
+export function prepareCacheDir(dir: string, uid = process.geteuid?.()): boolean {
+  try {
+    mkdirSync(dir, { mode: 0o700 })
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
+  }
+  // lstat: a symbolic link is not a directory.
+  const stat = lstatSync(dir)
+  if (!stat.isDirectory()) return false
+  // Windows has no user IDs here, and the temporary directory belongs to the
+  // user.
+  if (uid === undefined) return true
+  // This fails on a file system that does not keep the owner or the mode.
+  return stat.uid === uid && (stat.mode & 0o777) === 0o700
+}
+
+async function build(): Promise<string | undefined> {
   const dir = cacheDir()
+  const variable = process.platform === 'win32' ? 'TEMP' : 'TMPDIR'
+  let usable: boolean
+  try {
+    usable = prepareCacheDir(dir)
+  } catch (error) {
+    console.warn(
+      `[vitest-pool-fastforks] The pool cannot use ${dir} (${String((error as NodeJS.ErrnoException).code ?? error)}), so it starts without the startup snapshot. Set ${variable} to a directory that only you can write to.`,
+    )
+    return undefined
+  }
+  if (!usable) {
+    console.warn(
+      `[vitest-pool-fastforks] ${dir} is not a directory that you own with mode 0700, so the pool starts without the startup snapshot. Remove it (if another user owns it, an administrator can), or set ${variable} to a directory that only you can write to.`,
+    )
+    return undefined
+  }
   const blob = join(dir, `${process.version}-${cacheKey()}.blob`)
   if (existsSync(blob)) return blob
-  mkdirSync(dir, { recursive: true })
   // Write to a temporary file and rename it, so that parallel runs never read
   // a half-written blob.
   const temporary = `${blob}.${process.pid}.tmp`
