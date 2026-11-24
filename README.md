@@ -110,12 +110,10 @@ The speed-up is largest when a project has many small test files, because then t
 - Timing can differ from `forks`. A garbage collection can come at another point in a test file. A child process keeps the compiled code of earlier test files, so it can hold more than 16 MiB of executable memory. V8 can then compile new regular expressions with fewer optimizations, and a long match can take several times longer. A test that waits a fixed time or compares two timings can fail with this pool. Make such a test wait for the result, or run it in a separate [project](https://vitest.dev/guide/projects) with `pool: 'forks'`.
 - The `exit` and `beforeExit` listeners of a test file do not run. With `forks`, they run only if the process ends before Vitest stops it. So an error in such a listener can fail some runs with `forks`, but no run with this pool. For cleanup, use `afterAll`.
 - A timer that a test file leaves behind can throw an error after the file ends. Vitest reports the error only until it stops listening to the file. Both pools can miss these errors, and this pool can miss more of them than `forks`. To find these timers, run Vitest 4.1 or later with `--detectAsyncLeaks`.
-- For the modules in `node_modules` that Node.js loads (not the files that Vite transforms), the pool keeps their source and the resolved paths of their imports in memory for all test files in a child process. It keeps only the files that did not change after Vitest started, and each run starts with an empty cache. If a test file loads a file a second time, the pool checks that the file did not change. The pool uses the change time (ctime) of a file for these checks. A test file can still get an earlier source in these cases:
-  - A file that the pool kept changes during a run, and a later test file in the same child process loads it. For example, a test writes the file or replaces the directory of the file.
-  - The clock of the file system is more than 2 seconds behind the system clock.
-  - Test files see different file systems at the same path, for example with a virtual file system.
-
-  If a test adds or changes a package in `node_modules`, an import in such a module can still resolve to the earlier file.
+- The pool caches the modules in `node_modules` for all test files in a child process, so later test files do not read them again. It caches only files that did not change after Vitest started, and it clears the cache at each run. A test file can still get an old version of a file in these cases:
+  - The file changes during a run, and a later test file in the same child process loads it.
+  - The file system's clock is more than 2 seconds behind the system clock.
+  - Test files see different file systems at one path, for example with a virtual file system.
 
 ## Limitations
 
