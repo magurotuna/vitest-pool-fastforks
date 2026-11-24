@@ -28,6 +28,7 @@ const FIXTURES = {
   process: ['process', []],
   'hook-globals': ['hook-globals', []],
   callbacks: ['callbacks', []],
+  'freed-registry': ['freed-registry', ['--maxWorkers=1']],
   changing: ['changing', ['--maxWorkers=1']],
   'crash-on-create': ['crash-on-create', ['--maxWorkers=1']],
   'many-projects': ['many-projects', ['--maxWorkers=2']],
@@ -126,6 +127,15 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
           if (!results[p][stream].includes(text)) diff.push(`${p}: ${text} is missing from ${stream}`)
         }
       }
+    }
+    // The pool starts a file again in a new child process if an earlier file
+    // crashed the child process. It also starts again without the startup
+    // snapshot if a child process that used the snapshot exited before it was
+    // ready. So the results can be the same after a crash. Only the
+    // crash-on-create fixture makes the pool start again on purpose. The pool
+    // writes its warnings to stderr.
+    if (name !== 'crash-on-create' && /\[vitest-pool-fastforks\] A child process exited/.test(results[pool].stderr)) {
+      diff.push(`${pool}: a child process exited unexpectedly`)
     }
     const summary = `${results[pool].files ? Object.keys(results[pool].files).length : 0} files, exit ${results[base].code}/${results[pool].code}`
     if (diff.length) {
