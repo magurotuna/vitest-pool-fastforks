@@ -32,8 +32,9 @@ const FIXTURES = {
   changing: ['changing', ['--maxWorkers=1']],
   'crash-on-create': ['crash-on-create', ['--maxWorkers=1']],
   'many-projects': ['many-projects', ['--maxWorkers=2']],
-  // Each file writes process.pid. This pool must not run them in more child
-  // processes than the 2 workers of the project.
+  // Each file writes process.pid. This pool must run them in one child process
+  // for each of the 2 workers of the project: the first two files start at the
+  // same time, so fewer means that the limit is too low.
   'host-limit': ['host-limit', []],
   'separate-configs': ['separate-configs', ['--maxWorkers=2']],
   inspect: ['inspect', ['--inspect=127.0.0.1:9339', '--no-file-parallelism']],
@@ -165,9 +166,11 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
       failed = true
       console.log(`FAIL ${name} (fastforks): no pids: ${error.message}`)
     }
-    if (pids && pids.size > 2) {
+    if (pids && pids.size !== 2) {
       failed = true
-      console.log(`FAIL ${name} (fastforks): ${pids.size} child processes ran the files, more than 2 workers`)
+      console.log(
+        `FAIL ${name} (fastforks): child processes that ran the files: ${pids.size}, not 2 (one for each worker)`,
+      )
     }
   }
 }
