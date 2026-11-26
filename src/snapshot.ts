@@ -3,7 +3,7 @@
 // platform of a blob, and a blob from another build of the same version can
 // crash, so the cache key also has the binary's path, size, and mtime.
 import { execFile } from 'node:child_process'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync } from 'node:fs'
 import { tmpdir, userInfo } from 'node:os'
 import { join } from 'node:path'
@@ -165,15 +165,22 @@ async function build(): Promise<string | undefined> {
   const blob = join(dir, `${process.version}-${cacheKey()}.blob`)
   if (existsSync(blob)) return blob
   // Write to a temporary file and rename it, so that parallel runs never read
-  // a half-written blob.
-  const temporary = `${blob}.${process.pid}.tmp`
+  // a half-written blob. The name is random, because Vite can load this module
+  // once per config file, and all copies choose the name in the same process.
+  const temporary = `${blob}.${randomUUID()}.tmp`
   try {
     await new Promise<void>((resolve, reject) => {
       execFile(process.execPath, ['--snapshot-blob', temporary, '--build-snapshot', entry], (error) =>
         error ? reject(error) : resolve(),
       )
     })
-    renameSync(temporary, blob)
+    try {
+      renameSync(temporary, blob)
+    } catch (error) {
+      // On Windows, the rename fails while a child process reads the blob of
+      // another build. Use that blob.
+      if (!existsSync(blob)) throw error
+    }
   } finally {
     rmSync(temporary, { force: true })
   }
