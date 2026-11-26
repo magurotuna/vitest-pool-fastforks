@@ -29,6 +29,11 @@ const FIXTURES = {
   'hook-globals': ['hook-globals', []],
   callbacks: ['callbacks', []],
   'freed-registry': ['freed-registry', ['--maxWorkers=1']],
+  // The child process runs a GC after each of these files, so each file starts
+  // with a small heap. gc stays hidden from the files.
+  'gc-after-free': ['gc-after-free', ['--maxWorkers=1']],
+  // With these flags, the child process takes no gc, and does not crash.
+  'gc-flags': ['gc-flags', []],
   changing: ['changing', ['--maxWorkers=1']],
   'crash-on-create': ['crash-on-create', ['--maxWorkers=1']],
   'many-projects': ['many-projects', ['--maxWorkers=2']],

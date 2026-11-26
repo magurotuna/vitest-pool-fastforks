@@ -117,13 +117,64 @@ function restoreProcessState(): void {
   if (process.umask() !== baseline.umask) process.umask(baseline.umask)
 }
 
+// The Node.js flags of this process, also from NODE_OPTIONS.
+const flags = [...splitNodeOptions(process.env.NODE_OPTIONS ?? ''), ...process.execArgv]
+
+// After a free, V8 does not run a full GC soon, so the heap keeps the
+// garbage of the freed Environment. The heap grows to V8's limit for the old
+// generation, which can be several times the live heap, and the RSS stays
+// high. So after a free, run a full GC if the heap grew by GC_GROWTH since
+// the start of this process or the last GC. A GC after every free takes about
+// 30-60 ms for each file: on 4 busy CPUs, that made runs of short test files
+// up to 17% slower. With the threshold, a child process with little garbage
+// per file runs few GCs.
+const GC_GROWTH = 128 * 1024 * 1024
+const gc = takeGc()
+// The heap after the last GC, or when this process started. If V8 collected
+// the garbage itself, the lowest heap after a free.
+let heapBase = heapInUse()
+
+// Test files must not see gc, as with forks, unless the flags expose it.
+// V8 adds gc to a context only if --expose-gc is on when the context is
+// made. So if a new context has no gc, turn the flag on for one context and
+// off again.
+function takeGc(): (() => void) | undefined {
+  try {
+    const exposed: unknown = runInNewContext('typeof gc === "function" ? gc : undefined')
+    if (typeof exposed === 'function') return exposed as () => void
+    // With --expose-gc-as, gc has another name, and turning the flag off
+    // would hide it. With the other flags, V8 aborts or exits when a flag
+    // changes.
+    const blocked =
+      /^--?(expose[-_]gc[-_]as|freeze[-_]flags[-_]after[-_]init|(abort|exit)[-_]on[-_]contradictory[-_]flags)/
+    if (flags.some((arg) => blocked.test(arg))) return undefined
+    setFlagsFromString('--expose-gc')
+    try {
+      return runInNewContext('gc')
+    } finally {
+      setFlagsFromString('--no-expose-gc')
+    }
+  } catch {
+    return undefined
+  }
+}
+
+function heapInUse(): number {
+  const heap = getHeapStatistics()
+  return heap.used_heap_size + heap.external_memory
+}
+
+function collectGarbage(): void {
+  if (!gc) return
+  const used = heapInUse()
+  heapBase = Math.min(heapBase, used)
+  if (used - heapBase < GC_GROWTH) return
+  gc()
+  heapBase = heapInUse()
+}
+
 // Measurement only: how many contexts stay alive after a full GC.
 const contextsLog = process.env.VITEST_POOL_FASTFORKS_CONTEXTS
-let gc: (() => void) | undefined
-if (contextsLog) {
-  setFlagsFromString('--expose-gc')
-  gc = runInNewContext('gc')
-}
 
 let freed = 0
 function free(id: number): void {
@@ -143,8 +194,8 @@ function free(id: number): void {
 }
 
 function replyFreed(id: number): void {
-  if (contextsLog) {
-    gc!()
+  if (contextsLog && gc) {
+    gc()
     const heap = getHeapStatistics()
     appendFileSync(
       contextsLog,
@@ -157,6 +208,8 @@ function replyFreed(id: number): void {
         rss: process.memoryUsage.rss(),
       })}\n`,
     )
+  } else {
+    collectGarbage()
   }
   reply({ __fastforks_ctl: 'freed', id, rss: process.memoryUsage.rss() })
 }
@@ -178,7 +231,6 @@ function withoutSnapshotBlob(args: string[]): string[] {
 // Vitest's fork entry checks (here also from NODE_OPTIONS), V8 coverage, and
 // the CPU time measurement. Otherwise a SIGTERM that a test sends to its own
 // process would end this process.
-const flags = [...splitNodeOptions(process.env.NODE_OPTIONS ?? ''), ...process.execArgv]
 if (
   options.cpu ||
   process.env.NODE_V8_COVERAGE ||
