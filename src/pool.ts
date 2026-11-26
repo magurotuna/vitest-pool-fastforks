@@ -26,7 +26,10 @@ interface Registry {
   idle: Host[]
   /** Calls waiting for a child process to become idle or to exit. */
   waiters: (() => void)[]
+  /** The most child processes: hosts, together with the ones that are starting. */
   limit: number
+  /** Child processes that wait for the snapshot blob, and are not in hosts yet. */
+  starting: number
   /** The default memory limit of a child process. */
   memoryLimit: number
   closed: boolean
@@ -226,10 +229,18 @@ function setRef(child: ChildProcess, ref: boolean): void {
 }
 
 async function startHost(options: PoolOptions, context: PoolContext, key: string, registry: Registry): Promise<Host> {
-  const blob =
-    context.snapshot && canUseSnapshotBlob(options.execArgv, options.env.NODE_OPTIONS)
-      ? await getSnapshotBlob()
-      : undefined
+  // Count this child process while it waits for the blob, so that another
+  // acquireHost() does not start one more over the limit.
+  let blob: string | undefined
+  registry.starting++
+  try {
+    blob =
+      context.snapshot && canUseSnapshotBlob(options.execArgv, options.env.NODE_OPTIONS)
+        ? await getSnapshotBlob()
+        : undefined
+  } finally {
+    registry.starting--
+  }
   const host = spawnHost(options, context, key, registry, blob)
   try {
     await host.ready
@@ -259,8 +270,6 @@ async function startHost(options: PoolOptions, context: PoolContext, key: string
   }
 }
 
-// At most two child processes per worker: Vitest starts the next test file
-// before the previous one is stopped, and freeing an Environment takes time.
 // The default memory limit of a child process is the one that Vitest uses for
 // the workers of vmForks and vmThreads.
 function getRegistry(options: PoolOptions): Registry {
@@ -276,7 +285,9 @@ function getRegistry(options: PoolOptions): Registry {
       hosts: new Set(),
       idle: [],
       waiters: [],
-      limit: 2 * workers,
+      // acquireHost() raises it.
+      limit: 0,
+      starting: 0,
       memoryLimit: memory / workers,
       closed: false,
       inRun: false,
@@ -287,7 +298,21 @@ function getRegistry(options: PoolOptions): Registry {
     vitest.onClose(() => closeRegistry(created))
     registry = created
   }
+  // A registry from an older copy of this package has no starting count.
+  registry.starting ??= 0
   return registry
+}
+
+// The maxWorkers that Vitest uses for the test files of a project. Vitest 5
+// resolves it in the config of each project. Vitest 4 leaves it unset by
+// default, and then uses the root config or a default from the CPU count.
+function projectWorkers(project: PoolOptions['project']): number {
+  const valid = (n: number | undefined): n is number => n !== undefined && Number.isFinite(n) && n > 0
+  if (valid(project.config.maxWorkers)) return project.config.maxWorkers
+  const { maxWorkers, watch } = project.vitest.config
+  if (valid(maxWorkers)) return maxWorkers
+  const cpus = availableParallelism()
+  return watch ? Math.max(Math.floor(cpus / 2), 1) : Math.max(cpus - 1, 1)
 }
 
 // Vitest 5 calls this after it stopped every worker. Vitest 4 calls it while
@@ -315,17 +340,26 @@ async function closeRegistry(registry: Registry): Promise<void> {
   )
 }
 
+// At most one child process per worker. Each child process keeps the memory
+// of its largest test file, so more child processes use more memory. Vitest
+// starts the next test file before it stops the previous one, so this
+// function waits for a child process to become idle.
 async function acquireHost(options: PoolOptions, context: PoolContext, { reuse = true } = {}): Promise<Host> {
   const registry = getRegistry(options)
+  // Vitest runs the projects with different maxWorkers one after another. So
+  // the limit is the largest maxWorkers of the projects that ran.
+  registry.limit = Math.max(registry.limit, projectWorkers(options.project))
   const key = JSON.stringify([options.execArgv, options.env, needsInspector(options, context)])
-  for (let waited = false; ; waited = true) {
-    // closeRegistry() does not wait for a child process that starts after it.
-    if (registry.closed) throw new Error('[vitest-pool-fastforks] Vitest is closing')
+  const deadline = performance.now() + FREE_TIMEOUT
+  // Vitest 4 can close during the wait below, and then Vitest waits for this
+  // file. So start the file also after the close: releaseHost() stops the
+  // child process after the file.
+  for (;;) {
     if (reuse) {
       const index = registry.idle.findLastIndex((host) => host.key === key)
       if (index !== -1) return registry.idle.splice(index, 1)[0]!
     }
-    if (registry.hosts.size < registry.limit) break
+    if (registry.hosts.size + registry.starting < registry.limit) break
     if (registry.idle.length > 0) {
       // Make room: stop the child process that waited longest, whatever its
       // key.
@@ -334,12 +368,16 @@ async function acquireHost(options: PoolOptions, context: PoolContext, { reuse =
       killHost(oldest)
       break
     }
-    if (waited) break
-    // Every child process is busy, most of them freeing the Environment of
-    // a finished file. Waiting for one is faster than starting a new one,
-    // but do not wait long: a busy one may be running a long test file.
+    // Every child process is busy. Vitest runs at most `limit` files at the
+    // same time, and this file is one of them, so at least one child process
+    // has a file that Vitest finished. Vitest stops that file after the
+    // teardown of its test environment, and then the free takes a few
+    // milliseconds. If no child process is idle at the deadline, start one
+    // more: releaseHost() stops the extra one after its file.
+    const left = deadline - performance.now()
+    if (left <= 0) break
     await new Promise<void>((resolve) => {
-      const timer = setTimeout(resolve, 1000)
+      const timer = setTimeout(resolve, left)
       registry.waiters.push(() => {
         clearTimeout(timer)
         resolve()
@@ -347,6 +385,14 @@ async function acquireHost(options: PoolOptions, context: PoolContext, { reuse =
     })
   }
   return startHost(options, context, key, registry)
+}
+
+// closeRegistry() does not wait for a child process that started after it.
+// Vitest 4 waits for stop() when it closes, so after the close, stop() waits
+// for the exit of the child process.
+function exitAfterClose(host: Host): Promise<void> {
+  if (!host.registry.closed || host.exited) return Promise.resolve()
+  return new Promise((resolve) => host.events.once('exit', () => resolve()))
 }
 
 function notifyWaiters(registry: Registry): void {
@@ -393,6 +439,9 @@ export class FastForksPoolWorker implements PoolWorker {
       this.options.project.vitest.logger.warn(
         `[vitest-pool-fastforks] A child process exited ${host.exitReason} after ${host.files} test files, before the next file started. Starting the file in a new child process.`,
       )
+      // The child process can also close its channel and not exit.
+      host.registry.hosts.delete(host)
+      killHost(host)
       await this.attach(await acquireHost(this.options, this.context, { reuse: false }))
     }
   }
@@ -423,7 +472,7 @@ export class FastForksPoolWorker implements PoolWorker {
     for (const [key, callback] of this.listeners) host.events.off(key, callback)
     this.listeners = []
     if (host.exited) return
-    let freed: ControlMessage
+    let freed: ControlMessage | undefined
     let timer: NodeJS.Timeout | undefined
     try {
       const timeout = new Promise<never>((_, reject) => {
@@ -434,13 +483,15 @@ export class FastForksPoolWorker implements PoolWorker {
       // The child process does not answer, or it closed its channel. It exits
       // on 'disconnect', but an 'exit' listener can block it.
       killHost(host)
-      return
     } finally {
       clearTimeout(timer)
     }
-    host.files++
-    // The limit of this file's project: projects can set different limits.
-    releaseHost(host, freed.rss ?? 0, this.context.memoryLimit)
+    if (freed) {
+      host.files++
+      // The limit of this file's project: projects can set different limits.
+      releaseHost(host, freed.rss ?? 0, this.context.memoryLimit)
+    }
+    await exitAfterClose(host)
   }
 
   send(message: WorkerRequest): void {

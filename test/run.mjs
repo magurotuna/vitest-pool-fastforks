@@ -37,6 +37,10 @@ const FIXTURES = {
   changing: ['changing', ['--maxWorkers=1']],
   'crash-on-create': ['crash-on-create', ['--maxWorkers=1']],
   'many-projects': ['many-projects', ['--maxWorkers=2']],
+  // Each file writes process.pid. This pool must run them in one child process
+  // for each of the 2 workers of the project: the first two files start at the
+  // same time, so fewer means that the limit is too low.
+  'host-limit': ['host-limit', []],
   'separate-configs': ['separate-configs', ['--maxWorkers=2']],
   inspect: ['inspect', ['--inspect=127.0.0.1:9339', '--no-file-parallelism']],
   inspector: ['inspector', ['--maxWorkers=1']],
@@ -46,6 +50,7 @@ const FIXTURES = {
 
 // Runs before Vitest starts with each pool.
 const BEFORE = {
+  'host-limit': (dir, pool) => rmSync(join(dir, `pids-${pool}`), { force: true }),
   // Files in node_modules that exist before Vitest starts. This pool keeps a
   // file that did not change in the 2 seconds before, so wait longer.
   changing: async (dir) => {
@@ -72,6 +77,7 @@ const { values, positionals } = parseArgs({
 const root = dirname(fileURLToPath(import.meta.url))
 const out = resolve(values.out ?? join(root, '.results'))
 const pools = values.pools.split(',')
+const fallback = process.env.FASTFORKS_FALLBACK ?? 'error'
 const vitest = join(dirname(createRequire(import.meta.url).resolve('vitest/package.json')), 'vitest.mjs')
 
 let failed = false
@@ -81,7 +87,7 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
   mkdirSync(dir, { recursive: true })
   const results = {}
   for (const pool of pools) {
-    await BEFORE[name]?.(join(root, 'fixtures', fixture))
+    await BEFORE[name]?.(join(root, 'fixtures', fixture), pool)
     const report = join(dir, `${pool}.json`)
     const run = spawnSync(
       process.execPath,
@@ -98,7 +104,7 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
       ],
       {
         cwd: join(root, 'fixtures', fixture),
-        env: { ...process.env, ...env, POOL: pool, FASTFORKS_FALLBACK: process.env.FASTFORKS_FALLBACK ?? 'error' },
+        env: { ...process.env, ...env, POOL: pool, FASTFORKS_FALLBACK: fallback },
         encoding: 'utf8',
         timeout: 120_000,
       },
@@ -150,6 +156,26 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
       console.log(`  stderr of ${pool}: ${results[pool].stderr.split('\n').slice(0, 15).join('\n    ')}`)
     } else {
       console.log(`same ${name} (${base} vs ${pool}, ${summary})`)
+    }
+  }
+  // With another fallback, the forks pool can run the files instead.
+  if (name === 'host-limit' && pools.includes('fastforks') && fallback === 'error') {
+    let pids
+    try {
+      pids = new Set(
+        readFileSync(join(root, 'fixtures', fixture, 'pids-fastforks'), 'utf8')
+          .split('\n')
+          .filter(Boolean),
+      )
+    } catch (error) {
+      failed = true
+      console.log(`FAIL ${name} (fastforks): no pids: ${error.message}`)
+    }
+    if (pids && pids.size !== 2) {
+      failed = true
+      console.log(
+        `FAIL ${name} (fastforks): child processes that ran the files: ${pids.size}, not 2 (one for each worker)`,
+      )
     }
   }
 }
