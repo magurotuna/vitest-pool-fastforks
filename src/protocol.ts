@@ -25,6 +25,8 @@ export interface ControlMessage {
   id?: number
   /** In 'freed': the memory of the child process after it freed the Environment. */
   rss?: number
+  /** In 'freed': the JavaScript heap of the child process after it freed the Environment. */
+  heap?: { used: number; limit: number }
   /** In 'create': the run. A child process clears its module cache when it changes. */
   run?: number
 }
