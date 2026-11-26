@@ -444,7 +444,10 @@ export class FastForksPoolWorker implements PoolWorker {
   }
 
   send(message: WorkerRequest): void {
-    this.host!.child.send({ __fastforks: this.id, msg: message } satisfies WorkerMessage)
+    // Vitest can cancel the run (for example with --bail) before start() has
+    // a child process. The test file has not started yet, so drop the
+    // message.
+    this.host?.child.send({ __fastforks: this.id, msg: message } satisfies WorkerMessage)
   }
 
   on(event: string, callback: (...args: any[]) => void): void {

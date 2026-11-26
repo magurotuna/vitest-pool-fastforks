@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { expect, test } from 'vite-plus/test'
-import { Host } from '../../src/pool.ts'
+import { FastForksPoolWorker, Host } from '../../src/pool.ts'
 
 // A child process can close its channel before it exits: on Windows, the
 // pipe breaks while the child process exits. A request must then reject, and
@@ -26,4 +26,11 @@ test('a request to a child process that closed its channel rejects', async () =>
   } finally {
     child.kill()
   }
+})
+
+// Vitest sends a cancel (for example with --bail) to every worker, also to one
+// that still waits for a child process.
+test('a message before the worker has a child process does not throw', () => {
+  const worker = new FastForksPoolWorker({} as never, {} as never)
+  expect(() => worker.send({} as never)).not.toThrow()
 })
