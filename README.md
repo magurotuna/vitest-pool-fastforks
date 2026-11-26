@@ -12,7 +12,7 @@ A [Vitest](https://vitest.dev/) pool that isolates every test file like the [`fo
 
 ## How it works
 
-The `forks` pool starts a new Node.js process for every test file. This pool starts fewer processes and reuses them. In a process, each test file runs in a new [Node.js environment](https://nodejs.org/api/embedding.html): a second instance of Node.js in the same process, with its own global object, module cache, `process` object, and timers. When the file ends, the pool frees the environment and resets the working directory, the environment variables, and the umask. The next file starts in a new environment.
+The `forks` pool starts a new Node.js process for every test file. This pool starts fewer processes and reuses them, usually one for each worker. In a process, each test file runs in a new [Node.js environment](https://nodejs.org/api/embedding.html): a second instance of Node.js in the same process, with its own global object, module cache, `process` object, and timers. When the file ends, the pool frees the environment and resets the working directory, the environment variables, and the umask. The next file starts in a new environment.
 
 A new environment is faster to create than a new process, and the process keeps the compiled code of Vitest and of your dependencies.
 

@@ -2,6 +2,7 @@
 // that close() returns and that no child process of the pool is left:
 // - after a run, 2 times in one process
 // - while a test file runs
+// - while a test file waits for the child process of another file
 // - when a child process does not exit on SIGTERM, also after the memory
 //   limit stopped it
 // - with --cpu-prof, the child process writes its profile
@@ -18,7 +19,7 @@ import { fastForks } from 'vitest-pool-fastforks'
 const root = join(dirname(fileURLToPath(import.meta.url)), 'fixtures', 'close')
 const shared = () => globalThis[Symbol.for('vitest-pool-fastforks')]
 
-function start(include, options = {}) {
+function start(include, options = {}, config = {}) {
   return createVitest('test', {
     root,
     config: false,
@@ -26,6 +27,7 @@ function start(include, options = {}) {
     reporters: [],
     include: [include],
     pool: fastForks({ fallback: 'error', ...options }),
+    ...config,
   })
 }
 
@@ -66,6 +68,31 @@ for (let run = 1; run <= 2; run++) {
   if (!existsSync(marker)) fail('while a file runs: the test file did not start')
   await close(vitest, 'while a file runs')
   await running
+}
+
+// With one worker, the second file waits for the child process during the
+// free of the first file. Vitest 4 closes the pool during this wait.
+{
+  const marker = join(mkdtempSync(join(tmpdir(), 'fastforks-close-')), 'started')
+  process.env.FASTFORKS_CLOSE_MARKER = marker
+  const vitest = await start('slow-free-*.test.ts', {}, { maxWorkers: 1 })
+  const exitCode = process.exitCode
+  const running = vitest.start().catch(() => {})
+  const waits = () => (shared()?.registries.get(vitest)?.waiters.length ?? 0) > 0
+  for (let i = 0; i < 1000 && !waits(); i++) await delay(10)
+  if (!waits()) fail('while a file waits: no test file waited for a child process')
+  await close(vitest, 'while a file waits')
+  // In Vitest 4, the second file starts during close(), and close() returns
+  // after the exit of its child process.
+  if (shared().allHosts.size > 0) fail('while a file waits: a child process is alive after close')
+  await running
+  // In Vitest 4, the second file can fail: its transformed code is already
+  // gone. Vitest sets process.exitCode for it. In Vitest 5, both files pass.
+  const vitest4 = vitest.version.startsWith('4.')
+  const passed = vitest.state.getFiles().filter((file) => file.result?.state === 'pass').length
+  if (passed < (vitest4 ? 1 : 2)) fail(`while a file waits: only ${passed} test files passed`)
+  if (vitest4) process.exitCode = exitCode
+  else if (process.exitCode !== exitCode) fail(`while a file waits: Vitest set the exit code ${process.exitCode}`)
 }
 
 const nodeOptions = process.env.NODE_OPTIONS

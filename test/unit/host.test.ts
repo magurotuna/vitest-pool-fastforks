@@ -17,6 +17,7 @@ test('a request to a child process that closed its channel rejects', async () =>
       idle: [],
       waiters: [],
       limit: 1,
+      starting: 0,
       memoryLimit: 0,
       closed: false,
       inRun: false,
