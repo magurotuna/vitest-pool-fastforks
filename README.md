@@ -4,7 +4,7 @@ A [Vitest](https://vitest.dev/) pool that isolates every test file like the [`fo
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/results-dark.svg">
-  <img alt="Bar charts of the wall time with forks and with this pool, one for each project and one for a synthetic suite, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.07× slower to 2.27× faster per project. With 4 vCPUs, it is 1.02× to 1.95× faster per project. On the synthetic suite of 500 test files, it is 2.28× faster with 16 vCPUs and 2.73× faster with 4 vCPUs. The Results section has the same numbers in a table." src="docs/results-light.svg" width="800">
+  <img alt="Bar charts of the wall time with forks and with this pool, one for each project and one for a synthetic suite, with 16 vCPUs and with 4 vCPUs. With 16 vCPUs, this pool is 1.01× to 2.33× faster per project. With 4 vCPUs, it is 1.05× slower to 2.19× faster per project. On the synthetic suite of 500 test files, it is 2.65× faster with 16 vCPUs and 2.94× faster with 4 vCPUs. The Results section has the same numbers in a table." src="docs/results-light.svg" width="800">
 </picture>
 
 > [!WARNING]
@@ -72,21 +72,21 @@ Seven open source projects and one synthetic suite, run with the `forks` pool an
 
 <!-- results:start -->
 
-- Machine: a virtual machine with 16 vCPUs (AMD EPYC 9965 192-Core Processor, no SMT) and 31 GiB of memory, Linux.
-- Software: vitest-pool-fastforks 0.1.3, Node.js v26.13.0, and Vitest 5.1.0 (MUI X: 5.0.5).
-- Method: the median wall time of 3 runs, in seconds, measured on 2026-11-21.
+- Machine: a virtual machine with 16 vCPUs (AMD EPYC-Genoa Processor, no SMT) and 31 GiB of memory, Linux.
+- Software: vitest-pool-fastforks 0.1.4, Node.js v26.13.0, and Vitest 5.1.0 (MUI X: 5.0.5).
+- Method: the median wall time of 3 runs, in seconds, measured on 2026-11-27.
 - Conditions: "16 vCPUs" uses all CPUs. "4 vCPUs" limits the run to 4 CPUs (`taskset -c 0-3`), like a common CI runner. Both use Vitest's default number of workers (15 and 3), except readest, whose config sets `maxWorkers: 4`.
 
 | Project                                                                                                        | Test files | 16 vCPUs: forks → this pool | Speed-up | 4 vCPUs: forks → this pool | Speed-up |
 | -------------------------------------------------------------------------------------------------------------- | ---------: | --------------------------: | -------: | -------------------------: | -------: |
-| [readest](https://github.com/readest/readest)                                                                  |      1,265 |                219.2 → 96.4 |    2.27× |              285.9 → 148.7 |    1.92× |
-| [Vuetify](https://github.com/vuetifyjs/vuetify)                                                                |         81 |                   5.9 → 4.5 |    1.30× |                20.8 → 10.7 |    1.95× |
-| [Material UI](https://github.com/mui/material-ui)                                                              |        467 |                 38.8 → 27.0 |    1.44× |               146.3 → 78.7 |    1.86× |
-| [Base UI](https://github.com/mui/base-ui)                                                                      |        394 |                 55.1 → 43.2 |    1.27× |              224.8 → 157.3 |    1.43× |
-| [MUI X](https://github.com/mui/mui-x)                                                                          |        996 |               233.7 → 173.3 |    1.35× |              812.2 → 519.4 |    1.56× |
-| [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`)                                                   |        217 |                   4.7 → 3.8 |    1.25× |                16.7 → 10.6 |    1.57× |
-| [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests)                                   |         20 |                   3.0 → 3.2 |    0.93× |                  3.0 → 3.0 |    1.02× |
-| [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition) (synthetic) |        500 |                  19.0 → 8.3 |    2.28× |                74.8 → 27.4 |    2.73× |
+| [readest](https://github.com/readest/readest)                                                                  |      1,265 |                200.2 → 86.0 |    2.33× |              253.0 → 127.6 |    1.98× |
+| [Vuetify](https://github.com/vuetifyjs/vuetify)                                                                |         81 |                   4.6 → 3.0 |    1.50× |                 17.4 → 7.9 |    2.19× |
+| [Material UI](https://github.com/mui/material-ui)                                                              |        467 |                 31.2 → 20.1 |    1.55× |               128.1 → 66.1 |    1.94× |
+| [Base UI](https://github.com/mui/base-ui)                                                                      |        394 |                 41.5 → 29.9 |    1.39× |              194.4 → 136.6 |    1.42× |
+| [MUI X](https://github.com/mui/mui-x)                                                                          |        996 |               219.6 → 155.7 |    1.41× |              725.6 → 431.5 |    1.68× |
+| [Vitest](https://github.com/vitest-dev/vitest) (`test/unit`)                                                   |        217 |                   3.8 → 2.8 |    1.39× |                 14.3 → 9.1 |    1.57× |
+| [Instructure UI](https://github.com/instructure/instructure-ui) (Node tests)                                   |         20 |                   2.0 → 2.0 |    1.01× |                  2.2 → 2.3 |    0.95× |
+| [js-test-runner-competition](https://github.com/ubugeeei-reproductions/js-test-runner-competition) (synthetic) |        500 |                  15.0 → 5.7 |    2.65× |                63.4 → 21.5 |    2.94× |
 
 <!-- results:end -->
 
