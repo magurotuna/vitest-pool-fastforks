@@ -1,14 +1,14 @@
 {
   "machine": {
     "description": "a virtual machine",
-    "cpu": "AMD EPYC 9965 192-Core Processor",
+    "cpu": "AMD EPYC-Genoa Processor",
     "smt": false,
     "cpus": 16,
     "memoryGiB": 31,
     "os": "Linux",
     "node": "v26.13.0",
-    "package": "0.1.3",
-    "date": "2026-11-21"
+    "package": "0.1.4",
+    "date": "2026-11-27"
   },
   "runs": 3,
   "projects": [
@@ -21,22 +21,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 219.225,
-          "fastforks": 96.409,
-          "speedUp": 2.2739,
+          "forks": 200.165,
+          "fastforks": 85.992,
+          "speedUp": 2.3277,
           "walls": {
-            "forks": [221.785, 219.109, 219.225],
-            "fastforks": [97.783, 96.409, 95.867]
+            "forks": [200.165, 208.094, 191.417],
+            "fastforks": [85.992, 89.855, 80.094]
           }
         },
         {
           "cpus": 4,
-          "forks": 285.903,
-          "fastforks": 148.726,
-          "speedUp": 1.9223,
+          "forks": 253.037,
+          "fastforks": 127.572,
+          "speedUp": 1.9835,
           "walls": {
-            "forks": [284.862, 285.903, 290.55],
-            "fastforks": [153.178, 148.726, 145.84]
+            "forks": [262.785, 251.195, 253.037],
+            "fastforks": [138.312, 127.572, 126.983]
           }
         }
       ]
@@ -49,22 +49,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 5.869,
-          "fastforks": 4.524,
-          "speedUp": 1.2973,
+          "forks": 4.557,
+          "fastforks": 3.032,
+          "speedUp": 1.503,
           "walls": {
-            "forks": [6.05, 5.702, 5.869],
-            "fastforks": [4.413, 4.524, 4.528]
+            "forks": [4.465, 5.417, 4.557],
+            "fastforks": [3.019, 3.032, 3.05]
           }
         },
         {
           "cpus": 4,
-          "forks": 20.824,
-          "fastforks": 10.673,
-          "speedUp": 1.9511,
+          "forks": 17.386,
+          "fastforks": 7.923,
+          "speedUp": 2.1944,
           "walls": {
-            "forks": [21.592, 20.824, 20.652],
-            "fastforks": [10.673, 10.81, 10.384]
+            "forks": [17.386, 16.276, 17.629],
+            "fastforks": [7.923, 7.559, 9.166]
           }
         }
       ]
@@ -77,22 +77,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 38.826,
-          "fastforks": 27.039,
-          "speedUp": 1.4359,
+          "forks": 31.169,
+          "fastforks": 20.114,
+          "speedUp": 1.5496,
           "walls": {
-            "forks": [38.456, 39.364, 38.826],
-            "fastforks": [30.101, 26.971, 27.039]
+            "forks": [32.902, 30.211, 31.169],
+            "fastforks": [19.863, 20.741, 20.114]
           }
         },
         {
           "cpus": 4,
-          "forks": 146.289,
-          "fastforks": 78.666,
-          "speedUp": 1.8596,
+          "forks": 128.148,
+          "fastforks": 66.123,
+          "speedUp": 1.938,
           "walls": {
-            "forks": [144.518, 146.289, 149.226],
-            "fastforks": [78.755, 77.663, 78.666]
+            "forks": [125.214, 128.148, 128.971],
+            "fastforks": [66.123, 70.133, 65.495]
           }
         }
       ]
@@ -105,22 +105,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 55.058,
-          "fastforks": 43.234,
-          "speedUp": 1.2735,
+          "forks": 41.492,
+          "fastforks": 29.886,
+          "speedUp": 1.3883,
           "walls": {
-            "forks": [59.774, 53.914, 55.058],
-            "fastforks": [41.054, 43.764, 43.234]
+            "forks": [44.639, 40.69, 41.492],
+            "fastforks": [29.849, 29.886, 31.626]
           }
         },
         {
           "cpus": 4,
-          "forks": 224.812,
-          "fastforks": 157.331,
-          "speedUp": 1.4289,
+          "forks": 194.359,
+          "fastforks": 136.609,
+          "speedUp": 1.4227,
           "walls": {
-            "forks": [226.542, 222.119, 224.812],
-            "fastforks": [154.669, 157.331, 172.336]
+            "forks": [197.599, 188.806, 194.359],
+            "fastforks": [135.142, 136.609, 139.327]
           }
         }
       ]
@@ -133,22 +133,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 233.668,
-          "fastforks": 173.348,
-          "speedUp": 1.348,
+          "forks": 219.605,
+          "fastforks": 155.671,
+          "speedUp": 1.4107,
           "walls": {
-            "forks": [233.668, 235.828, 228.958],
-            "fastforks": [176.037, 169.797, 173.348]
+            "forks": [219.605, 223.477, 197.008],
+            "fastforks": [191.959, 155.671, 137.143]
           }
         },
         {
           "cpus": 4,
-          "forks": 812.159,
-          "fastforks": 519.37,
-          "speedUp": 1.5637,
+          "forks": 725.625,
+          "fastforks": 431.52,
+          "speedUp": 1.6816,
           "walls": {
-            "forks": [807.27, 812.159, 814.611],
-            "fastforks": [543.904, 505.958, 519.37]
+            "forks": [733.35, 725.625, 721.967],
+            "fastforks": [403.29, 431.52, 462.241]
           }
         }
       ]
@@ -162,22 +162,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 4.735,
-          "fastforks": 3.785,
-          "speedUp": 1.251,
+          "forks": 3.83,
+          "fastforks": 2.759,
+          "speedUp": 1.3882,
           "walls": {
-            "forks": [4.967, 4.735, 4.558],
-            "fastforks": [3.785, 3.904, 3.483]
+            "forks": [3.83, 4.111, 3.705],
+            "fastforks": [2.663, 2.915, 2.759]
           }
         },
         {
           "cpus": 4,
-          "forks": 16.669,
-          "fastforks": 10.596,
+          "forks": 14.26,
+          "fastforks": 9.065,
           "speedUp": 1.5731,
           "walls": {
-            "forks": [16.25, 16.669, 17.479],
-            "fastforks": [10.451, 11.036, 10.596]
+            "forks": [14.26, 13.679, 14.585],
+            "fastforks": [8.71, 9.065, 9.27]
           }
         }
       ]
@@ -191,22 +191,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 2.989,
-          "fastforks": 3.208,
-          "speedUp": 0.9317,
+          "forks": 2.041,
+          "fastforks": 2.012,
+          "speedUp": 1.0144,
           "walls": {
-            "forks": [2.989, 3.022, 2.885],
-            "fastforks": [3.37, 3.128, 3.208]
+            "forks": [2.041, 2.036, 2.075],
+            "fastforks": [2.224, 1.997, 2.012]
           }
         },
         {
           "cpus": 4,
-          "forks": 3.037,
-          "fastforks": 2.977,
-          "speedUp": 1.0202,
+          "forks": 2.165,
+          "fastforks": 2.278,
+          "speedUp": 0.9504,
           "walls": {
-            "forks": [3.323, 3.037, 2.708],
-            "fastforks": [2.977, 3.348, 2.756]
+            "forks": [2.803, 2.129, 2.165],
+            "fastforks": [2.278, 2.089, 2.291]
           }
         }
       ]
@@ -220,22 +220,22 @@
       "results": [
         {
           "cpus": 16,
-          "forks": 18.971,
-          "fastforks": 8.336,
-          "speedUp": 2.2758,
+          "forks": 15.001,
+          "fastforks": 5.671,
+          "speedUp": 2.6452,
           "walls": {
-            "forks": [18.971, 19.28, 18.86],
-            "fastforks": [8.043, 8.906, 8.336]
+            "forks": [15.001, 15.274, 14.277],
+            "fastforks": [5.229, 6.03, 5.671]
           }
         },
         {
           "cpus": 4,
-          "forks": 74.788,
-          "fastforks": 27.378,
-          "speedUp": 2.7317,
+          "forks": 63.442,
+          "fastforks": 21.548,
+          "speedUp": 2.9442,
           "walls": {
-            "forks": [74.788, 77.305, 74.126],
-            "fastforks": [27.378, 27.54, 25.905]
+            "forks": [61.928, 63.442, 64.548],
+            "fastforks": [21.548, 20.531, 22.162]
           }
         }
       ]
