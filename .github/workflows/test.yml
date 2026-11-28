@@ -7,9 +7,8 @@ on:
 permissions:
   contents: read
 
-# Actions minutes of a private repository are limited (macOS counts 10 times,
-# Windows 2 times). A push runs only Linux; run the workflow by hand
-# (workflow_dispatch) for macOS, Windows, other Vitest versions, and Node 24.
+# A push runs the tests on Linux, macOS, and Windows. Run the workflow by hand
+# (workflow_dispatch) for other Vitest versions and Node 24.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -42,7 +41,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["ubuntu-latest", "macos-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
+        os: [ubuntu-latest, macos-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

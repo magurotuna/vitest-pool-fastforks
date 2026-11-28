@@ -6,7 +6,8 @@ export default {
     pool: pool(),
     execArgv: [
       "--require", fileURLToPath(new URL("./setup.cjs", import.meta.url)),
-      "--import", fileURLToPath(new URL("./setup.mjs", import.meta.url)),
+      // --import takes a URL: on Windows, an absolute path is not one.
+      "--import", new URL("./setup.mjs", import.meta.url).href,
       "--expose-gc",
       "--conditions=custom",
     ],
