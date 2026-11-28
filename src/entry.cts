@@ -33,6 +33,7 @@ const setAdd = uncurryThis(Set.prototype.add)
 const decode = uncurryThis(TextDecoder.prototype.decode)
 const decoder = new TextDecoder()
 const { stringify } = JSON
+const { apply } = Reflect
 const clone = structuredClone
 const stat = statSync
 const toPath = fileURLToPath
@@ -113,6 +114,53 @@ processObject.send = (message: unknown, ...args: unknown[]): boolean => {
   return true
 }
 Reflect.set(processObject, 'connected', true)
+
+// Node.js does not unload a native addon when an Environment of this process
+// ends. An addon that is not context-aware (for example, an addon that uses
+// NODE_MODULE()) registers itself only when the process loads it for the
+// first time. So if an earlier test file in this child process loaded such an
+// addon, a later file gets "Module did not self-register", although the file
+// passes with the forks pool. Add the cause and a workaround to this error.
+// require() of a .node file also calls process.dlopen().
+const addons = bridge.addons
+const addonsHere = new Set<string>()
+const ADDON_HINT =
+  '\n[vitest-pool-fastforks] This child process loaded this native addon before, for an earlier test file or an earlier run. ' +
+  'Node.js can load an addon that is not context-aware (for example, an addon that uses NODE_MODULE()) ' +
+  "only once in a process. Run the test files that use this addon in a separate project with pool: 'forks'. " +
+  'See https://github.com/magurotuna/vitest-pool-fastforks#limitations'
+const loaded = (filename: unknown): void => {
+  if (typeof filename !== 'string') return
+  setAdd(addonsHere, filename)
+  addons.add(filename)
+}
+// apply() below gives `this` to it.
+// oxlint-disable-next-line typescript/unbound-method
+const nodeDlopen = processObject.dlopen
+processObject.dlopen = function dlopen(this: unknown, ...args: unknown[]): void {
+  // Pass the arguments as they are: Node.js reads the flags only if there are
+  // three arguments.
+  const filename = args[1]
+  try {
+    apply(nodeDlopen, this, args)
+  } catch (error) {
+    const code = typeof error === 'object' && error !== null ? (error as { code?: unknown }).code : undefined
+    if (code !== 'ERR_DLOPEN_FAILED') {
+      // The initializer of the addon threw, after Node.js registered the addon.
+      loaded(filename)
+    } else if (
+      typeof filename === 'string' &&
+      typeof (error as Error).message === 'string' &&
+      includes((error as Error).message, 'did not self-register') &&
+      !setHas(addonsHere, filename) &&
+      addons.has(filename)
+    ) {
+      ;(error as Error).message += ADDON_HINT
+    }
+    throw error
+  }
+  loaded(filename)
+}
 
 async function start(): Promise<void> {
   // A computed path, so that the bundler leaves this import alone.

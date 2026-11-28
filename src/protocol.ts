@@ -59,6 +59,12 @@ export interface ModuleCache {
   since: number
 }
 
+/** The file names of the native addons that the Environments of a child process loaded. */
+export interface LoadedAddons {
+  add(filename: string): void
+  has(filename: string): boolean
+}
+
 /** What the child process puts on the global object of an Environment. */
 export interface Bridge {
   /** Sends a message of Vitest to the main process. */
@@ -67,6 +73,7 @@ export interface Bridge {
   ready(deliver: (message: unknown) => void): void
   forksUrl: string
   moduleCache: ModuleCache
+  addons: LoadedAddons
 }
 
 /** The native addon (addon/fastforks.cc). */

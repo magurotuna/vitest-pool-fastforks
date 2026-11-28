@@ -5,8 +5,8 @@
 // Usage: node test/run.mjs [--out <dir>] [--pools a,b] [fixture ...]
 // Without fixtures, runs all of them. The fixtures run with
 // `fallback: 'error'`, so a run that cannot use this pool fails.
-import { spawnSync } from 'node:child_process'
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { execFileSync, spawnSync } from 'node:child_process'
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { setTimeout as delay } from 'node:timers/promises'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
@@ -41,6 +41,10 @@ const FIXTURES = {
   // for each of the 2 workers of the project: the first two files start at the
   // same time, so fewer means that the limit is too low.
   'host-limit': ['host-limit', []],
+  // Both files load an addon that is not context-aware. This pool runs them
+  // in one child process, so the second file gets an error, and the error
+  // must contain the cause.
+  'legacy-addon': ['legacy-addon', ['--maxWorkers=1']],
   'separate-configs': ['separate-configs', ['--maxWorkers=2']],
   inspect: ['inspect', ['--inspect=127.0.0.1:9339', '--no-file-parallelism']],
   inspector: ['inspector', ['--maxWorkers=1']],
@@ -49,8 +53,16 @@ const FIXTURES = {
 }
 
 // Runs before Vitest starts with each pool.
+let legacyAddonBuilt = false
 const BEFORE = {
   'host-limit': (dir, pool) => rmSync(join(dir, `pids-${pool}`), { force: true }),
+  'legacy-addon': (dir, pool) => {
+    rmSync(join(dir, `hints-${pool}`), { force: true })
+    if (legacyAddonBuilt) return
+    legacyAddonBuilt = true
+    const nodeGyp = createRequire(import.meta.url).resolve('node-gyp/bin/node-gyp.js')
+    execFileSync(process.execPath, [nodeGyp, 'rebuild'], { cwd: dir, stdio: 'pipe' })
+  },
   // Files in node_modules that exist before Vitest starts. This pool keeps a
   // file that did not change in the 2 seconds before, so wait longer.
   changing: async (dir) => {
@@ -176,6 +188,22 @@ for (const name of positionals.length ? positionals : Object.keys(FIXTURES)) {
       console.log(
         `FAIL ${name} (fastforks): child processes that ran the files: ${pids.size}, not 2 (one for each worker)`,
       )
+    }
+  }
+  // Each file that gets the error writes a line, after it checks the error.
+  // With another fallback, the forks pool can run the files instead.
+  if (name === 'legacy-addon') {
+    for (const [pool, expected] of [
+      ['forks', 0],
+      ['fastforks', 1],
+    ]) {
+      if (!pools.includes(pool) || (pool === 'fastforks' && fallback !== 'error')) continue
+      const file = join(root, 'fixtures', fixture, `hints-${pool}`)
+      const count = existsSync(file) ? readFileSync(file, 'utf8').split('\n').filter(Boolean).length : 0
+      if (count !== expected) {
+        failed = true
+        console.log(`FAIL ${name} (${pool}): files that got the error: ${count}, not ${expected}`)
+      }
     }
   }
 }

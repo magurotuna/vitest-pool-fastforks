@@ -60,6 +60,13 @@ const moduleCache: Bridge['moduleCache'] = {
   setLoaded: (url, format, source, file) => void loaded.set(url, { format, source, file }),
   since: options.since,
 }
+// Node.js does not unload an addon when an Environment ends, so the list is
+// not cleared at a new run.
+const addonFiles = new Set<string>()
+const addons: Bridge['addons'] = {
+  add: (filename) => void addonFiles.add(filename),
+  has: (filename) => addonFiles.has(filename),
+}
 let run = 0
 
 const entry = join(__dirname, 'entry.cjs')
@@ -86,6 +93,7 @@ function create(id: number, nextRun: number): void {
     },
     forksUrl: options.forksUrl,
     moduleCache,
+    addons,
   }
   addon.global(sid).__vitestPoolFastForks = bridge
   addon.load(sid, LOAD)
